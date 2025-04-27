@@ -17,7 +17,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: "3.13"
 
       - name: Install dependencies
         run: |
@@ -49,14 +49,16 @@ jobs:
           docker run --rm -d --name diun-boost-test-container \
             -e DIUN_YAML_PATH="/tmp/config.yml" \
             -e LOG_LEVEL="DEBUG" \
+            -e WATCHBYDEFAULT="true" \
             -v ${{ github.workspace }}/tmp:/tmp \
             -v /var/run/docker.sock:/var/run/docker.sock \
+            -l 'diun.enable=true' \
             diun-boost-test
 
           echo "Waiting for 5 seconds..."
           sleep 5
 
-          if [[ ! -s ./tmp/config.yml ]]; then
+          if [[ ! -f ./tmp/config.yml ]]; then
             echo "ERROR: config.yml was not created or is empty!"
             docker logs diun-boost-test-container || true
             exit 1
@@ -66,11 +68,11 @@ jobs:
           fi
 
           docker stop diun-boost-test-container || true
-          
+
       - name: Cleanup temp folder
         run: |
           rm -rf ./tmp
-  
+
   generate-badges:
     name: Generate Badges
     runs-on: ubuntu-latest
@@ -81,16 +83,16 @@ jobs:
         uses: RubbaBoy/BYOB@v1.3.0
         with:
           NAME: unit-tests
-          LABEL: 'Unit Tests'
+          LABEL: "Unit Tests"
           STATUS: ${{ needs.test-code.result }}
           COLOR: ${{ needs.test-code.result == 'success' && 'green' || 'red' }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
+
       - name: Generate Docker Test Badge
         uses: RubbaBoy/BYOB@v1.3.0
         with:
           NAME: docker-tests
-          LABEL: 'Docker Tests'
+          LABEL: "Docker Tests"
           STATUS: ${{ needs.test-docker.result }}
           COLOR: ${{ needs.test-docker.result == 'success' && 'green' || 'red' }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
