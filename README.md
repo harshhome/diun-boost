@@ -3,6 +3,9 @@
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/harshhome/diun-boost?style=flat)](https://github.com/harshhome/diun-boost/releases/latest)
 [![Docker Image Size (latest by tag)](https://img.shields.io/docker/image-size/harshbaldwa/diun-boost/latest?style=flat)](https://hub.docker.com/r/harshbaldwa/diun-boost)
 
+![Unit Tests](https://byob.yarr.is/harshhome/diun-boost/unit-tests)
+![Docker Tests](https://byob.yarr.is/harshhome/diun-boost/docker-tests)
+
 Automated [DIUN](https://crazymax.dev/diun/) File Provider YAML Generator for Smarter Docker Image Monitoring
 
 ## 📄 General Description

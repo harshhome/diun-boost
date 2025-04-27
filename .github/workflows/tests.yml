@@ -70,3 +70,27 @@ jobs:
       - name: Cleanup temp folder
         run: |
           rm -rf ./tmp
+  
+  generate-badges:
+    name: Generate Badges
+    runs-on: ubuntu-latest
+    needs: [test-code, test-docker]
+
+    steps:
+      - name: Generate Unit Test Badge
+        uses: RubbaBoy/BYOB@v1.3.0
+        with:
+          NAME: unit-tests
+          LABEL: 'Unit Tests'
+          STATUS: ${{ needs.test-code.result }}
+          COLOR: ${{ needs.test-code.result == 'success' && 'green' || 'red' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+      - name: Generate Docker Test Badge
+        uses: RubbaBoy/BYOB@v1.3.0
+        with:
+          NAME: docker-tests
+          LABEL: 'Docker Tests'
+          STATUS: ${{ needs.test-docker.result }}
+          COLOR: ${{ needs.test-docker.result == 'success' && 'green' || 'red' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
