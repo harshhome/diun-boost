@@ -1,1 +1,1 @@
-{"unit-tests":{"label":"Unit Tests","status":"success","color":"green"}}
+{"unit-tests":{"label":"Unit Tests","status":"success","color":"green"},"docker-tests":{"label":"Docker Tests","status":"success","color":"green"}}
