@@ -54,18 +54,28 @@ docker run -d \
   -e DIUN_YAML_PATH=/config/config.yml \
   -e CRON_SCHEDULE="0 */6 * * *" \
   -e LOG_LEVEL=INFO \
+  -e WATCHBYDEFAULT=false \
   -v $(pwd)/config:/config \
   -v /var/run/docker.sock:/var/run/docker.sock \
   harshbaldwa/diun-boost:latest
 ```
-#### Environment Variables:
-- `DIUN_YAML_PATH`: Shared `config.yml` file path.
-- `CRON_SCHEDULE`: Cron schedule for generating the YAML file. Default is `0 */6 * * *`.
-- `LOG_LEVEL`: Set the log level (DEBUG, INFO, WARNING, ERROR). Default is INFO.
 
-#### Volume Mounts:
-- `/var/run/docker.sock`: Required for Docker API access.
-- `$(pwd)/config`: Directory for the generated `config.yml` file.
+#### Environment Variables
+
+| Variable        | Description                                                                                                                                           | Default Value        |
+|------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------|
+| `DIUN_YAML_PATH` | Path to the shared `config.yml` file that DIUN will read.                                                                                               | `/config/config.yml`  |
+| `CRON_SCHEDULE`  | Cron schedule expression to control how often the YAML file is regenerated.                                                                           | `0 */6 * * *`          |
+| `LOG_LEVEL`      | Logging level for diun-boost. Available options: `DEBUG`, `INFO`, `WARNING`, `ERROR`.                                                                  | `INFO`                |
+| `WATCHBYDEFAULT` | Set to `true` to watch **all running containers** by default. <br> However, any container explicitly labeled with `diun.enable=false` will always be excluded. <br> If set to `false`, only containers with the label `diun.enable=true` are watched. | `false`               |
+
+
+#### Volume Mounts
+
+| Mount Path               | Description                                           |
+|----------------------------|-------------------------------------------------------|
+| `/var/run/docker.sock`     | Required for accessing the Docker API from the container. |
+| `$(pwd)/config`            | Local directory to store the generated `config.yml` file.  |
 
 ### Using Docker Compose
 
