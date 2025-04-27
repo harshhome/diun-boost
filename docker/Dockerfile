@@ -15,9 +15,4 @@ RUN chmod +x /entrypoint.sh
 
 ENV PYTHONPATH=/app
 
-LABEL org.opencontainers.image.title="diun-boost"
-LABEL org.opencontainers.image.description="Generate config.yml automatically from running containers"
-LABEL org.opencontainers.image.version="1.0.0"
-LABEL org.opencontainers.image.authors="Harshvardhan Baldwa docker@harshbaldwa.com"
-
 ENTRYPOINT ["/entrypoint.sh"]

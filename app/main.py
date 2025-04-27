@@ -6,7 +6,7 @@ from loguru import logger
 
 
 from app.docker_client import get_docker_client, get_running_containers
-from app.yaml_helper import create_diun_yaml, write_yaml_to_file, compare_yaml_files
+from app.yaml_helper import create_diun_yaml, write_yaml_to_file, compare_yaml_files, create_empty_yaml
 
 
 def setup_logging(level="INFO"):
@@ -19,10 +19,10 @@ def setup_logging(level="INFO"):
     )
 
 
-def run_tasks(output_path: str) -> None:
+def run_tasks(output_path: str, m_all: bool) -> None:
     client = get_docker_client()
-    containers = get_running_containers(client)
-    diun_entries = create_diun_yaml(containers)
+    containers = get_running_containers(client, m_all)
+    diun_entries = create_diun_yaml(containers, m_all)
 
     if compare_yaml_files(output_path, diun_entries):
         write_yaml_to_file(diun_entries, output_path)
@@ -36,15 +36,21 @@ def main():
 
     logging_level = os.getenv("LOG_LEVEL")
     setup_logging(logging_level)
-
+    
+    monitor_all = os.getenv("WATCHBYDEFAULT").lower() == "true"
+    if monitor_all:
+        logger.info("Monitoring all containers by default...")
+    else:
+        logger.info("Monitoring only containers with DIUN labels i.e. diun.enable=true")
     output_path = os.getenv("DIUN_YAML_PATH")
 
     if args.first_run:
-        logger.info("Running initial setup (first manual run after container start)...")
+        logger.info("Running initial setup...")
+        create_empty_yaml(output_path)
     else:
         logger.info("Running scheduled cron job...")
 
-    run_tasks(output_path)
+    run_tasks(output_path, monitor_all)
 
 
 if __name__ == "__main__":

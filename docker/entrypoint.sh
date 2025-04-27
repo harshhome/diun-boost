@@ -8,6 +8,7 @@ trap 'echo "Received SIGTERM, stopping cron..."; pkill cron; exit 0' TERM INT
     echo "export DIUN_YAML_PATH=\"${DIUN_YAML_PATH:-/config/config.yml}\""
     echo "export CRON_SCHEDULE=\"${CRON_SCHEDULE:-0 */6 * * *}\""
     echo "export LOG_LEVEL=\"${LOG_LEVEL:-INFO}\""
+    echo "export WATCHBYDEFAULT=\"${WATCHBYDEFAULT:-false}\""
     echo "export PYTHONPATH=/app"
 } > /etc/cron.d/env-vars
 

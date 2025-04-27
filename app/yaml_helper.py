@@ -8,18 +8,22 @@ from loguru import logger
 from app.regex_helper import generate_version_regex
 
 
-def create_diun_yaml(containers: List[Container]) -> List[Dict]:
+def create_diun_yaml(containers: List[Container], m_all: bool) -> List[Dict]:
     """
     Create a YAML configuration for DIUN based on running containers.
 
     Args:
         containers (List[Container]): A list of running Docker containers.
+        m_all (bool): Flag to indicate whether to monitor all containers or only those with specific labels.
 
     Returns:
         List[Dict]: A list of dictionaries representing the YAML configuration.
     """
     entries = []
-    logger.info(f"🔍 Found {len(containers)} running containers matching labels")
+    if m_all:
+        logger.info(f"🔍 Found {len(containers)} running containers")
+    else:
+        logger.info(f"🔍 Found {len(containers)} running containers with DIUN labels")
 
     for container in containers:
         image = container.image.tags[0] if container.image.tags else None
@@ -55,7 +59,7 @@ def compare_yaml_files(file: str, yaml_data: List[Dict]) -> bool:
     """
     try:
         with open(file, "r") as f:
-            existing_data = yaml.safe_load(f)
+            existing_data = yaml.safe_load(f) or []
             if existing_data != yaml_data:
                 logger.info("YAML configuration has changed.")
                 return True
@@ -65,6 +69,18 @@ def compare_yaml_files(file: str, yaml_data: List[Dict]) -> bool:
     except FileNotFoundError:
         logger.warning(f"File {file} not found. Creating a new one.")
         return True
+    
+
+def create_empty_yaml(file_path: str) -> None:
+    """
+    Create an empty YAML file if it doesn't exist.
+
+    Args:
+        file_path (str): The path to the YAML file.
+    """
+    with open(file_path, "w") as file:
+        file.write("\n")
+    logger.info(f"Empty YAML file created at {file_path}")
 
     
 def write_yaml_to_file(yaml_data: List[Dict], file_path: str) -> None:
