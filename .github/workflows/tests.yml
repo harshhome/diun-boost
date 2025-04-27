@@ -1,0 +1,72 @@
+name: Run Tests
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test-code:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run Tests
+        run: |
+          pytest -v
+
+  test-docker:
+    name: Build and Test Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image locally
+        run: |
+          docker build -t diun-boost-test -f docker/Dockerfile .
+
+      - name: Run Container and Validate config.yml
+        run: |
+          mkdir -p ./tmp
+          docker run --rm -d --name diun-boost-test-container \
+            -e DIUN_YAML_PATH="/tmp/config.yml" \
+            -e LOG_LEVEL="DEBUG" \
+            -v ${{ github.workspace }}/tmp:/tmp \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            diun-boost-test
+
+          echo "Waiting for 5 seconds..."
+          sleep 5
+
+          if [[ ! -s ./tmp/config.yml ]]; then
+            echo "ERROR: config.yml was not created or is empty!"
+            docker logs diun-boost-test-container || true
+            exit 1
+          else
+            echo "✅ config.yml exists and is populated!"
+            head -n 20 ./tmp/config.yml
+          fi
+
+          docker stop diun-boost-test-container || true
+          
+      - name: Cleanup temp folder
+        run: |
+          rm -rf ./tmp
