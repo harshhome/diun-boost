@@ -129,14 +129,15 @@ services:
     
   diun-boost:
     container_name: diun-boost
-    image: harshbaldwa/diun-boost:1.0
+    image: harshbaldwa/diun-boost:1.1.0
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./config:/config
     environment:
       - DIUN_YAML_PATH=/config/config.yml
-      - CRON_SCHEDULE="0 */6 * * *"
+      - CRON_SCHEDULE=0 */6 * * *
       - LOG_LEVEL=INFO
+      - WATCHBYDEFAULT=false
     restart: unless-stopped
 ```
 
