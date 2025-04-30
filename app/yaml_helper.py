@@ -8,13 +8,14 @@ from loguru import logger
 from app.regex_helper import generate_version_regex
 
 
-def create_diun_yaml(containers: List[Container], m_all: bool) -> List[Dict]:
+def create_diun_yaml(containers: List[Container], m_all: bool, compose_track: bool) -> List[Dict]:
     """
     Create a YAML configuration for DIUN based on running containers.
 
     Args:
         containers (List[Container]): A list of running Docker containers.
         m_all (bool): Flag to indicate whether to monitor all containers or only those with specific labels.
+        compose_track (bool): Flag to indicate whether to track Docker Compose information. If True, include Docker Compose project and service names in the YAML configuration.
 
     Returns:
         List[Dict]: A list of dictionaries representing the YAML configuration.
@@ -31,8 +32,19 @@ def create_diun_yaml(containers: List[Container], m_all: bool) -> List[Dict]:
             continue
 
         image_name, tag = image.rsplit(":", 1)
+        entry = {"name": image, "notify_on": ["update"], "metadata": {
+            "current_tag": tag}}
+        
+        if "com.docker.compose.project" in container.labels and compose_track:
+            compose_project = container.labels["com.docker.compose.project"]
+            compose_service = container.labels["com.docker.compose.service"]
+            entry.update({
+                "metadata": {
+                    "compose_project": compose_project,
+                    "compose_service": compose_service
+                }
+            })
 
-        entry = {"name": image, "notify_on": ["update"]}
         if re.match(r"^v?\d+(\.\d+){0,2}$", tag):
             regex = generate_version_regex(tag)
             if regex:

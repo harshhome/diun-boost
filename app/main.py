@@ -19,10 +19,10 @@ def setup_logging(level="INFO"):
     )
 
 
-def run_tasks(output_path: str, m_all: bool) -> None:
+def run_tasks(output_path: str, m_all: bool, compose_track: bool) -> None:
     client = get_docker_client()
     containers = get_running_containers(client, m_all)
-    diun_entries = create_diun_yaml(containers, m_all)
+    diun_entries = create_diun_yaml(containers, m_all, compose_track)
 
     if compare_yaml_files(output_path, diun_entries):
         write_yaml_to_file(diun_entries, output_path)
@@ -38,11 +38,16 @@ def main():
     setup_logging(logging_level)
     
     monitor_all = os.getenv("WATCHBYDEFAULT").lower() == "true"
+    compose_track = os.getenv("DOCKER_COMPOSE_METADATA").lower() == "true"
+    output_path = os.getenv("DIUN_YAML_PATH")
+    
     if monitor_all:
         logger.info("Monitoring all containers by default...")
     else:
         logger.info("Monitoring only containers with DIUN labels i.e. diun.enable=true")
-    output_path = os.getenv("DIUN_YAML_PATH")
+
+    if compose_track:
+        logger.info("Tracking Docker Compose metadata...")
 
     if args.first_run:
         logger.info("Running initial setup...")
@@ -50,7 +55,7 @@ def main():
     else:
         logger.info("Running scheduled cron job...")
 
-    run_tasks(output_path, monitor_all)
+    run_tasks(output_path, monitor_all, compose_track)
 
 
 if __name__ == "__main__":
