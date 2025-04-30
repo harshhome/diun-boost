@@ -55,6 +55,7 @@ docker run -d \
   -e CRON_SCHEDULE="0 */6 * * *" \
   -e LOG_LEVEL=INFO \
   -e WATCHBYDEFAULT=false \
+  -e DOCKER_COMPOSE_METADATA=false \
   -v $(pwd)/config:/config \
   -v /var/run/docker.sock:/var/run/docker.sock \
   harshbaldwa/diun-boost:latest
@@ -68,6 +69,7 @@ docker run -d \
 | `CRON_SCHEDULE`  | Cron schedule expression to control how often the YAML file is regenerated.                                                                           | `0 */6 * * *`          |
 | `LOG_LEVEL`      | Logging level for diun-boost. Available options: `DEBUG`, `INFO`, `WARNING`, `ERROR`.                                                                  | `INFO`                |
 | `WATCHBYDEFAULT` | Set to `true` to watch **all running containers** by default. <br> However, any container explicitly labeled with `diun.enable=false` will always be excluded. <br> If set to `false`, only containers with the label `diun.enable=true` are watched. | `false`               |
+| `DOCKER_COMPOSE_METADATA` | Set to `true` to include Docker Compose metadata in the generated YAML file. <br> This is useful for identifying containers in a multi-container setup as well as for notifications with DIUN. <br> If set to `false`, only the container name will be used. | `false`               |
 
 
 #### Volume Mounts
@@ -91,6 +93,8 @@ services:
         - DIUN_YAML_PATH=/config/config.yml
         - CRON_SCHEDULE="0 */6 * * *"
         - LOG_LEVEL=INFO
+        - WATCHBYDEFAULT=false
+        - DOCKER_COMPOSE_METADATA=false
     restart: unless-stopped
 ```
 
@@ -138,6 +142,7 @@ services:
       - CRON_SCHEDULE=0 */6 * * *
       - LOG_LEVEL=INFO
       - WATCHBYDEFAULT=false
+      - DOCKER_COMPOSE_METADATA=false
     restart: unless-stopped
 ```
 
