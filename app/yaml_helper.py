@@ -40,6 +40,7 @@ def create_diun_yaml(containers: List[Container], m_all: bool, compose_track: bo
             compose_service = container.labels["com.docker.compose.service"]
             entry.update({
                 "metadata": {
+                    "current_tag": tag,
                     "compose_project": compose_project,
                     "compose_service": compose_service
                 }
