@@ -133,7 +133,7 @@ services:
     
   diun-boost:
     container_name: diun-boost
-    image: harshbaldwa/diun-boost:1.1.0
+    image: harshbaldwa/diun-boost:1.2.0
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./config:/config
