@@ -51,14 +51,14 @@ This tool simplifies managing large DIUN configurations by automatically creatin
 ```bash
 docker run -d \
   --name diun-boost \
-  -e DIUN_YAML_PATH=/config/config.yml \
+  -e DIUN_YAML_PATH="/config/config.yml" \
   -e CRON_SCHEDULE="0 */6 * * *" \
-  -e LOG_LEVEL=INFO \
-  -e WATCHBYDEFAULT=false \
-  -e DOCKER_COMPOSE_METADATA=false \
-  -v $(pwd)/config:/config \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  harshbaldwa/diun-boost:latest
+  -e LOG_LEVEL="INFO" \
+  -e WATCHBYDEFAULT="false" \
+  -e DOCKER_COMPOSE_METADATA="false" \
+  -v "$(pwd)/config:/config" \
+  -v "/var/run/docker.sock:/var/run/docker.sock" \
+  harshbaldwa/diun-boost:1.2.1
 ```
 
 #### Environment Variables
@@ -85,16 +85,16 @@ docker run -d \
 services:
   diun-boost:
     container_name: diun-boost
-    image: harshbaldwa/diun-boost:latest
+    image: harshbaldwa/diun-boost:1.2.1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./config:/config
     environment:
-        - DIUN_YAML_PATH=/config/config.yml
-        - CRON_SCHEDULE="0 */6 * * *"
-        - LOG_LEVEL=INFO
-        - WATCHBYDEFAULT=false
-        - DOCKER_COMPOSE_METADATA=false
+      - DIUN_YAML_PATH=/config/config.yml
+      - CRON_SCHEDULE=0 */6 * * *
+      - LOG_LEVEL=INFO
+      - WATCHBYDEFAULT=false
+      - DOCKER_COMPOSE_METADATA=false
     restart: unless-stopped
 ```
 
@@ -133,7 +133,7 @@ services:
     
   diun-boost:
     container_name: diun-boost
-    image: harshbaldwa/diun-boost:1.2.0
+    image: harshbaldwa/diun-boost:1.2.1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./config:/config
