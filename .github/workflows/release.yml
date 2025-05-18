@@ -50,6 +50,10 @@ jobs:
           echo "MAJOR=$(echo ${GITHUB_REF#refs/tags/v} | cut -d. -f1)" >> $GITHUB_ENV
           echo "MINOR=$(echo ${GITHUB_REF#refs/tags/v} | cut -d. -f2)" >> $GITHUB_ENV
 
+      - name: Update README with current version
+        run: |
+          sed -i "s|harshbaldwa/diun-boost:.*|harshbaldwa/diun-boost:${{ env.RELEASE_VERSION_STRIPPED }}|" README.md
+
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
