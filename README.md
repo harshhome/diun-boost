@@ -89,7 +89,7 @@ docker run -d \
   -e DOCKER_COMPOSE_METADATA="false" \
   -v "$(pwd)/config:/config" \
   -v "/var/run/docker.sock:/var/run/docker.sock" \
-  harshbaldwa/diun-boost:1.2.1
+  harshbaldwa/diun-boost:1.3.0
 ```
 
 #### Environment Variables
@@ -116,7 +116,7 @@ docker run -d \
 services:
   diun-boost:
     container_name: diun-boost
-    image: harshbaldwa/diun-boost:1.2.1
+    image: harshbaldwa/diun-boost:1.3.0
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./config:/config
@@ -164,7 +164,7 @@ services:
     
   diun-boost:
     container_name: diun-boost
-    image: harshbaldwa/diun-boost:1.2.1
+    image: harshbaldwa/diun-boost:1.3.0
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./config:/config
