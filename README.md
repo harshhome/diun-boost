@@ -2,6 +2,13 @@
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/harshhome/diun-boost?style=flat)](https://github.com/harshhome/diun-boost/releases/latest)
 [![Docker Image Size (latest by tag)](https://img.shields.io/docker/image-size/harshbaldwa/diun-boost/latest?style=flat)](https://hub.docker.com/r/harshbaldwa/diun-boost)
+[![GitHub Stars](https://img.shields.io/github/stars/harshhome/diun-boost?style=flat)](https://github.com/harshhome/diun-boost/stargazers)
+[![Docker Pulls](https://img.shields.io/docker/pulls/harshbaldwa/diun-boost?style=flat)](https://hub.docker.com/r/harshbaldwa/diun-boost)
+[![Issues](https://img.shields.io/github/issues/harshhome/diun-boost?style=flat)](https://github.com/harshhome/diun-boost/issues)
+
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Repo-black?logo=github&style=flat)](https://github.com/harshhome/diun-boost)
+[![DockerHub](https://img.shields.io/badge/DockerHub-Repo-blue?logo=docker&style=flat)](https://hub.docker.com/r/harshbaldwa/diun-boost)
+[![Made with Python](https://img.shields.io/badge/Made%20with-Python-yellow?logo=python&style=flat)](https://www.python.org/)
 
 ![Unit Tests](https://byob.yarr.is/harshhome/diun-boost/unit-tests)
 ![Docker Tests](https://byob.yarr.is/harshhome/diun-boost/docker-tests)
@@ -18,22 +25,46 @@ This tool simplifies managing large DIUN configurations by automatically creatin
 
 ## ✨ Features
 
-### Semantic Versioning Support 🚀:
-- If the container tag is `1.0.0`, it will match future **patch**, **minor**, and **major** versions like `1.0.1`, `1.1.0`, `2.0.0`, etc.
+### 🧠 Smart Semantic Versioning Support
 
-- If the container tag is `1.0`, it will match any `1.x`, `2.x`, etc.
+Version matching is **depth-aware** — only tags with the **same number of components** (segments) are compared:
 
-- If the container tag is `1`, it will match any `2`, `3`, and so on.
+- ✅ `1.0.0` matches:
+  - `1.0.1`, `1.1.0`, `2.0.0`
+- ✅ `1.0` matches:
+  - `1.1`, `2.0`
+- ✅ `1.2.3.4` matches:
+  - `1.2.3.5`, `1.2.4.0`, `2.0.0.0`
+- ❌ No match to shorter (`1.0`, `1`) or longer (`1.0.0.1`) tags
 
-### V-Prefix Friendly 🎯: 
-- Supports tags like `v1.0.0`, `v1.2`, etc.
+> 📏 All segments must match in **depth** and be **equal or greater** in value.
 
-### Handles "latest" and Non-Standard Tags:
-- If a tag is `latest`, it will monitor the `latest` tag.
+### 🏷️ Arbitrary Prefix Support
 
-- If a tag doesn't follow semver, it simply monitors that specific tag.
+Supports any prefix (e.g. `v`, `pg`, `nodejs-`, `redis-`), preserving it in all matches:
 
-### Minimal Setup:
+- Examples:
+  - `v1.0.0`, `pg13.5.1`, `nodejs-18.16.0`, `nginx1.25.3`
+
+### 🎯 Suffix-Aware Version Comparison
+
+Suffixes and their versions are independently compared:
+
+- A tag like `v1.2.0.12-build12` will match:
+  - `v1.2.0.12-build13` ✅ (same main version, higher suffix version)
+  - `v1.2.0.13-build11` ✅ (higher main version, lower suffix version still okay)
+- Both the **main version** and **suffix version** are evaluated using depth-aware comparison
+
+### ✅ Non-Semver & Static Tag Matching
+
+Tags that don’t follow semantic versioning — like:
+- `latest`, `20240518`, `final-build`, `beta`
+- Are matched **exactly**, no version logic is applied.
+
+### 🔍 Test Regex Live
+👉 Explore the version matching logic and patterns here: [Regex 101 pattern](https://regex101.com/r/u8sAuo/1)
+
+### 🤏 Minimal Setup:
 - Works out of the box using Docker 🐳.
 
 - Supports linux/amd64 and linux/arm64 architectures.

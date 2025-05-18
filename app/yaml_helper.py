@@ -1,14 +1,15 @@
-import re
-import yaml
+from typing import Dict, List
 
-from typing import List, Dict
+import yaml
 from docker.models.containers import Container
 from loguru import logger
 
-from app.regex_helper import generate_version_regex
+from app.regex_helper import build_tag_regex
 
 
-def create_diun_yaml(containers: List[Container], m_all: bool, compose_track: bool) -> List[Dict]:
+def create_diun_yaml(
+    containers: List[Container], m_all: bool, compose_track: bool
+) -> List[Dict]:
     """
     Create a YAML configuration for DIUN based on running containers.
 
@@ -22,14 +23,23 @@ def create_diun_yaml(containers: List[Container], m_all: bool, compose_track: bo
     """
     entries = []
     if m_all:
-        logger.info(f"🔍 Found {len(containers)} running containers")
+        logger.info(f"🔍 Found {len(containers)} containers")
     else:
-        logger.info(f"🔍 Found {len(containers)} running containers with DIUN labels")
+        logger.info(f"🔍 Found {len(containers)} containers with DIUN labels")
+    
+    logger.debug(f"  - {'Container':<20} {'Image':<50}")
 
     for container in containers:
         image = container.image.tags[0] if container.image.tags else None
-        if not image or ":" not in image:
-            continue
+        digest = None
+        if not image:
+            img = container.attrs["Config"]["Image"]
+            if "@sha256" in img:
+                img, digest = img.split("@sha256:")
+                image = img
+            else:
+                logger.warning(f"Skipping container {container.name}: no tags")
+                continue
 
         image_name, tag = image.rsplit(":", 1)
         entry = {"name": image, "notify_on": ["update"], "metadata": {
@@ -45,17 +55,20 @@ def create_diun_yaml(containers: List[Container], m_all: bool, compose_track: bo
                     "compose_service": compose_service
                 }
             })
-
-        if re.match(r"^v?\d+(\.\d+){0,2}$", tag):
-            regex = generate_version_regex(tag)
-            if regex:
-                entry.update({
-                    "notify_on": ["new", "update"],
-                    "watch_repo": True,
-                    "include_tags": [regex],
-                })
+        
+        tag_regex = build_tag_regex(tag)
+        if tag_regex:
+            entry.update({
+                "notify_on": ["new", "update"],
+                "watch_repo": True,
+                "include_tags": [tag_regex],
+            })
+        
         entries.append(entry)
-        logger.debug(f"  - {container.name}: {image_name} ({tag})")
+        if digest:
+            logger.debug(f"📌- {container.name:<20} {image_name:<50}")
+        else:            
+            logger.debug(f"  - {container.name:<20} {image_name:<50}")
     return entries
 
 
@@ -74,13 +87,13 @@ def compare_yaml_files(file: str, yaml_data: List[Dict]) -> bool:
         with open(file, "r") as f:
             existing_data = yaml.safe_load(f) or []
             if existing_data != yaml_data:
-                logger.info("YAML configuration has changed.")
+                logger.info("📄 YAML configuration has changed.")
                 return True
             else:
-                logger.info("YAML configuration is unchanged.")
+                logger.info("📄 YAML configuration is unchanged.")
                 return False
     except FileNotFoundError:
-        logger.warning(f"File {file} not found. Creating a new one.")
+        logger.warning(f"📄 File {file} not found. Creating a new one.")
         return True
     
 
@@ -93,7 +106,7 @@ def create_empty_yaml(file_path: str) -> None:
     """
     with open(file_path, "w") as file:
         file.write("\n")
-    logger.info(f"Empty YAML file created at {file_path}")
+    logger.info(f"📄 Empty YAML file created at {file_path}")
 
     
 def write_yaml_to_file(yaml_data: List[Dict], file_path: str) -> None:
@@ -109,4 +122,4 @@ def write_yaml_to_file(yaml_data: List[Dict], file_path: str) -> None:
             yaml.dump([entry], file, default_flow_style=False, sort_keys=False)
             file.write("\n")
 
-    logger.info(f"YAML configuration written to {file_path}")
+    logger.info(f"📝 YAML configuration written to {file_path}")
