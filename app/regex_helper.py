@@ -55,7 +55,7 @@ def build_ver_regex(version: str, cmp_func: Callable[[int], str]) -> str:
 
     Args:
         version (str): The version string to generate the regex for.
-        cmp_func (Callable[[int], str]): 
+        cmp_func (Callable[[int], str]):
             The comparison function to use (regex_gt or regex_gte).
 
     Returns:
@@ -88,7 +88,7 @@ def build_ver_regex(version: str, cmp_func: Callable[[int], str]) -> str:
     return pattern
 
 
-def build_tag_regex(tag: str) -> str:
+def build_tag_regex(tag: str) -> str | None:
     """Generate a regex pattern for the given tag.
 
     Args:

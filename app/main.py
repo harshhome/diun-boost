@@ -22,9 +22,9 @@ def setup_logging(level: str) -> None:
     )
 
 
-def run_tasks(output_path: str, m_all: bool, compose_track: bool) -> None:
+def run_tasks(output_path: str, m_all: bool, compose_track: bool, swarm_mode: bool) -> None:
     client = get_docker_client()
-    containers = get_running_containers(client, m_all)
+    containers = get_running_containers(client, m_all, swarm_mode)
     diun_entries = create_diun_yaml(containers, m_all, compose_track)
 
     if compare_yaml_files(output_path, diun_entries):
@@ -39,12 +39,13 @@ def main():
     )
     args = parser.parse_args()
 
-    logging_level = os.getenv("LOG_LEVEL")
+    logging_level = os.getenv("LOG_LEVEL", "INFO").upper()
     setup_logging(logging_level)
 
-    monitor_all = os.getenv("WATCHBYDEFAULT").lower() == "true"
-    compose_track = os.getenv("DOCKER_COMPOSE_METADATA").lower() == "true"
-    output_path = os.getenv("DIUN_YAML_PATH")
+    monitor_all = os.getenv("WATCHBYDEFAULT", "false").lower() == "true"
+    compose_track = os.getenv("DOCKER_COMPOSE_METADATA", "false").lower() == "true"
+    output_path = os.getenv("DIUN_YAML_PATH", "/config/config.yml")
+    swarm_mode = os.getenv("SWARM_MODE", "false").lower() == "true"
 
     if monitor_all:
         logger.info("🐳 Monitoring all containers by default...")
@@ -55,13 +56,16 @@ def main():
     if compose_track:
         logger.info("🐳 Tracking Docker Compose metadata...")
 
+    if swarm_mode:
+        logger.info(f"🐳 Docker Swarm mode enabled")
+
     if args.first_run:
         logger.info("✨ Running initial setup...")
         create_empty_yaml(output_path)
     else:
         logger.info("⏰ Running scheduled cron job...")
 
-    run_tasks(output_path, monitor_all, compose_track)
+    run_tasks(output_path, monitor_all, compose_track, swarm_mode)
 
 
 if __name__ == "__main__":

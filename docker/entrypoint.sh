@@ -10,6 +10,7 @@ export CRON_SANTIZED=$(echo "${CRON_SCHEDULE:-0 */6 * * *}" | tr -d '"'\''')
     echo "export LOG_LEVEL=\"${LOG_LEVEL:-INFO}\""
     echo "export WATCHBYDEFAULT=\"${WATCHBYDEFAULT:-false}\""
     echo "export DOCKER_COMPOSE_METADATA=\"${DOCKER_COMPOSE_METADATA:-false}\""
+    echo "export SWARM_MODE=\"${SWARM_MODE:-false}\""
     echo "export PYTHONPATH=/app"
 } > /etc/cron.d/env-vars
 

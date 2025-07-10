@@ -96,7 +96,8 @@ docker run -d \
 | `CRON_SCHEDULE`  | Cron schedule expression to control how often the YAML file is regenerated.                                                                           | `0 */6 * * *`          |
 | `LOG_LEVEL`      | Logging level for diun-boost. Available options: `DEBUG`, `INFO`, `WARNING`, `ERROR`.                                                                  | `INFO`                |
 | `WATCHBYDEFAULT` | Set to `true` to watch **all running containers** by default. <br> However, any container explicitly labeled with `diun.enable=false` will always be excluded. <br> If set to `false`, only containers with the label `diun.enable=true` are watched. | `false`               |
-| `DOCKER_COMPOSE_METADATA` | Set to `true` to include Docker Compose metadata in the generated YAML file. <br> This is useful for identifying containers in a multi-container setup as well as for notifications with DIUN. <br> If set to `false`, only the container name will be used. | `false`               |
+| `DOCKER_COMPOSE_METADATA` | Set to `true` to include Docker Compose or Docker Swarm metadata in the generated YAML file. <br> This is useful for identifying containers in a multi-container setup as well as for notifications with DIUN. <br> If set to `false`, only the container name will be used. | `false`               |
+| `SWARM_MODE`     | Set to `true` if running in Docker Swarm mode. <br> This enables fetching services from all nodes in the swarm as well as stack metadata. <br> If set to `false`, only the local node's containers are considered. | `false`               |
 
 
 #### Volume Mounts
@@ -157,7 +158,7 @@ services:
     environment:
       - "TZ=America/New_York"
     restart: unless-stopped
-    
+
   diun-boost:
     container_name: diun-boost
     image: harshbaldwa/diun-boost:1.3.0
