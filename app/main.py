@@ -6,7 +6,8 @@ from loguru import logger
 
 from app.docker_client import get_docker_client, get_running_containers
 from app.yaml_helper import (compare_yaml_files, create_diun_yaml,
-                             create_empty_yaml, write_yaml_to_file)
+                             create_empty_yaml, load_yaml_entries,
+                             merge_custom_metadata, write_yaml_to_file)
 
 
 def setup_logging(level: str) -> None:
@@ -25,7 +26,9 @@ def setup_logging(level: str) -> None:
 def run_tasks(output_path: str, m_all: bool, compose_track: bool) -> None:
     client = get_docker_client()
     containers = get_running_containers(client, m_all)
+    existing_entries = load_yaml_entries(output_path)
     diun_entries = create_diun_yaml(containers, m_all, compose_track)
+    diun_entries = merge_custom_metadata(diun_entries, existing_entries)
 
     if compare_yaml_files(output_path, diun_entries):
         write_yaml_to_file(diun_entries, output_path)
