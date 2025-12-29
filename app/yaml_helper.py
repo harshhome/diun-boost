@@ -208,9 +208,12 @@ def create_empty_yaml(file_path: str) -> None:
     Args:
         file_path (str): The path to the YAML file.
     """
-    with open(file_path, "w") as file:
-        file.write("\n")
-    logger.info(f"📄 Empty YAML file created at {file_path}")
+    try:
+        with open(file_path, "x") as file:
+            file.write("\n")
+        logger.info(f"📄 Empty YAML file created at {file_path}")
+    except FileExistsError:
+        logger.info(f"📄 YAML file already exists at {file_path}")
 
     
 def write_yaml_to_file(yaml_data: List[Dict], file_path: str) -> None:

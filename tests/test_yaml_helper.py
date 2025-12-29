@@ -1,4 +1,4 @@
-from app.yaml_helper import merge_custom_metadata
+from app.yaml_helper import create_empty_yaml, merge_custom_metadata
 
 
 def test_merge_custom_metadata_preserves_custom_keys():
@@ -49,3 +49,14 @@ def test_merge_custom_metadata_matches_by_name():
     merged = merge_custom_metadata(generated, existing)
 
     assert "team" not in merged[0]["metadata"]
+
+
+def test_create_empty_yaml_does_not_overwrite_existing(tmp_path):
+    file_path = tmp_path / "config.yml"
+
+    create_empty_yaml(str(file_path))
+    file_path.write_text("keep\n")
+
+    create_empty_yaml(str(file_path))
+
+    assert file_path.read_text() == "keep\n"
