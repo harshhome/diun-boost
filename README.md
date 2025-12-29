@@ -61,6 +61,12 @@ Tags that don’t follow semantic versioning — like:
 - `latest`, `20240518`, `final-build`, `beta`
 - Are matched **exactly**, no version logic is applied.
 
+### 📝 Custom Metadata Preservation
+
+Add your own keys under `metadata` in `config.yml` entries and diun-boost will
+keep them on regeneration (it still updates `current_tag` and optional Docker
+Compose metadata).
+
 ### 🔍 Test Regex Live
 👉 Explore the version matching logic and patterns here: [Regex 101 pattern](https://regex101.com/r/u8sAuo/1)
 

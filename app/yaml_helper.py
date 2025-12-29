@@ -6,6 +6,12 @@ from loguru import logger
 
 from app.regex_helper import build_tag_regex
 
+AUTO_METADATA_KEYS = {
+    "current_tag",
+    "compose_project",
+    "compose_service",
+}
+
 
 def create_diun_yaml(
     containers: List[Container], m_all: bool, compose_track: bool
@@ -72,6 +78,102 @@ def create_diun_yaml(
     return entries
 
 
+def load_yaml_entries(file_path: str) -> List[Dict]:
+    """
+    Load existing DIUN entries from a YAML file.
+
+    Args:
+        file_path (str): The path to the YAML file.
+
+    Returns:
+        List[Dict]: A list of entries from the YAML file.
+    """
+    try:
+        with open(file_path, "r") as f:
+            data = yaml.safe_load(f) or []
+    except FileNotFoundError:
+        return []
+
+    if isinstance(data, dict):
+        return [data]
+    if isinstance(data, list):
+        return data
+
+    logger.warning(
+        f"📄 YAML file {file_path} has unexpected structure; "
+        "skipping custom metadata merge."
+    )
+    return []
+
+
+def extract_custom_metadata(entries: List[Dict]) -> Dict[str, Dict]:
+    """
+    Extract user-defined metadata from existing YAML entries.
+
+    Args:
+        entries (List[Dict]): Existing YAML entries.
+
+    Returns:
+        Dict[str, Dict]: Mapping of entry name to custom metadata.
+    """
+    custom_metadata = {}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("name")
+        if not name:
+            continue
+        metadata = entry.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        custom = {
+            key: value
+            for key, value in metadata.items()
+            if key not in AUTO_METADATA_KEYS
+        }
+        if custom:
+            custom_metadata[name] = custom
+    return custom_metadata
+
+
+def merge_custom_metadata(
+    entries: List[Dict], existing_entries: List[Dict]
+) -> List[Dict]:
+    """
+    Merge user-defined metadata into generated entries.
+
+    Args:
+        entries (List[Dict]): Newly generated DIUN entries.
+        existing_entries (List[Dict]): Existing YAML entries.
+
+    Returns:
+        List[Dict]: Updated entries with custom metadata preserved.
+    """
+    custom_by_name = extract_custom_metadata(existing_entries)
+    if not custom_by_name:
+        return entries
+
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("name")
+        if not name:
+            continue
+        custom = custom_by_name.get(name)
+        if not custom:
+            continue
+        metadata = entry.get("metadata")
+        if not isinstance(metadata, dict):
+            metadata = {}
+        merged_metadata = dict(metadata)
+        for key, value in custom.items():
+            if key not in merged_metadata:
+                merged_metadata[key] = value
+        entry["metadata"] = merged_metadata
+
+    return entries
+
+
 def compare_yaml_files(file: str, yaml_data: List[Dict]) -> bool:
     """
     Compare the existing YAML file with the new YAML data.
@@ -86,6 +188,8 @@ def compare_yaml_files(file: str, yaml_data: List[Dict]) -> bool:
     try:
         with open(file, "r") as f:
             existing_data = yaml.safe_load(f) or []
+            if isinstance(existing_data, dict):
+                existing_data = [existing_data]
             if existing_data != yaml_data:
                 logger.info("📄 YAML configuration has changed.")
                 return True
