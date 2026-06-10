@@ -4,10 +4,13 @@ import yaml
 from docker.models.containers import Container
 from loguru import logger
 
+from app.dashboard_snapshot import canonical_image_name
+from app.docker_client import get_container_current_digest
 from app.regex_helper import build_tag_regex
 
 AUTO_METADATA_KEYS = {
     "current_tag",
+    "current_digest",
     "compose_project",
     "compose_service",
 }
@@ -43,23 +46,24 @@ def create_diun_yaml(
             if "@sha256" in img:
                 img, digest = img.split("@sha256:")
                 image = img
+                digest = f"sha256:{digest}"
             else:
                 logger.warning(f"Skipping container {container.name}: no tags")
                 continue
 
         image_name, tag = image.rsplit(":", 1)
-        entry = {"name": image, "notify_on": ["update"], "metadata": {
-            "current_tag": tag}}
-        
+        current_digest = get_container_current_digest(container) or digest
+        metadata = {"current_tag": tag}
+        if current_digest:
+            metadata["current_digest"] = current_digest
+        entry = {"name": image, "notify_on": ["update"], "metadata": metadata}
+
         if "com.docker.compose.project" in container.labels and compose_track:
             compose_project = container.labels["com.docker.compose.project"]
             compose_service = container.labels["com.docker.compose.service"]
-            entry.update({
-                "metadata": {
-                    "current_tag": tag,
-                    "compose_project": compose_project,
-                    "compose_service": compose_service
-                }
+            entry["metadata"].update({
+                "compose_project": compose_project,
+                "compose_service": compose_service,
             })
         
         tag_regex = build_tag_regex(tag)
@@ -171,6 +175,31 @@ def merge_custom_metadata(
                 merged_metadata[key] = value
         entry["metadata"] = merged_metadata
 
+    return entries
+
+
+def enrich_missing_current_digests(
+    entries: List[Dict], manifest_lookup: Dict[str, List[Dict]]
+) -> List[Dict]:
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        metadata = entry.get("metadata")
+        if not isinstance(metadata, dict) or metadata.get("current_digest"):
+            continue
+        name = entry.get("name")
+        current_tag = metadata.get("current_tag")
+        if not isinstance(name, str) or not isinstance(current_tag, str) or ":" not in name:
+            continue
+        image_name = canonical_image_name(name.split(":", 1)[0])
+        manifests = manifest_lookup.get(image_name, [])
+        for manifest in manifests:
+            if manifest.get("tag") != current_tag:
+                continue
+            digest = manifest.get("digest")
+            if isinstance(digest, str) and digest:
+                metadata["current_digest"] = digest
+                break
     return entries
 
 

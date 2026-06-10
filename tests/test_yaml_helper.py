@@ -1,4 +1,24 @@
-from app.yaml_helper import create_empty_yaml, merge_custom_metadata
+from types import SimpleNamespace
+
+from app.yaml_helper import (
+    create_diun_yaml,
+    create_empty_yaml,
+    enrich_missing_current_digests,
+    merge_custom_metadata,
+)
+
+
+def make_container(*, name, image_tag, repo_digests=None, labels=None, config_image=None):
+    image = SimpleNamespace(
+        tags=[image_tag] if image_tag else [],
+        attrs={"RepoDigests": repo_digests or []},
+    )
+    return SimpleNamespace(
+        name=name,
+        image=image,
+        labels=labels or {},
+        attrs={"Config": {"Image": config_image or image_tag or ""}},
+    )
 
 
 def test_merge_custom_metadata_preserves_custom_keys():
@@ -27,6 +47,7 @@ def test_merge_custom_metadata_ignores_auto_keys():
         {"name": "repo:1", "metadata": {
             "compose_project": "app",
             "compose_service": "web",
+            "current_digest": "sha256:old",
             "note": "keep",
         }}
     ]
@@ -40,6 +61,7 @@ def test_merge_custom_metadata_ignores_auto_keys():
     assert merged[0]["metadata"]["note"] == "keep"
     assert "compose_project" not in merged[0]["metadata"]
     assert "compose_service" not in merged[0]["metadata"]
+    assert "current_digest" not in merged[0]["metadata"]
 
 
 def test_merge_custom_metadata_matches_by_name():
@@ -49,6 +71,48 @@ def test_merge_custom_metadata_matches_by_name():
     merged = merge_custom_metadata(generated, existing)
 
     assert "team" not in merged[0]["metadata"]
+
+
+def test_create_diun_yaml_includes_current_digest_metadata():
+    container = make_container(
+        name="sonarr",
+        image_tag="linuxserver/sonarr:4.0.17",
+        repo_digests=["linuxserver/sonarr@sha256:abcdef123456"],
+        labels={
+            "com.docker.compose.project": "arr-stack",
+            "com.docker.compose.service": "sonarr",
+        },
+    )
+
+    entries = create_diun_yaml([container], m_all=True, compose_track=True)
+
+    assert entries[0]["metadata"]["current_tag"] == "4.0.17"
+    assert entries[0]["metadata"]["current_digest"] == "sha256:abcdef123456"
+    assert entries[0]["metadata"]["compose_project"] == "arr-stack"
+    assert entries[0]["metadata"]["compose_service"] == "sonarr"
+
+
+def test_enrich_missing_current_digests_uses_matching_manifest_digest():
+    entries = [
+        {
+            "name": "harshbaldwa/diun-boost:1.4.0",
+            "metadata": {
+                "current_tag": "1.4.0",
+                "compose_project": "docker-monitoring",
+                "compose_service": "diun-boost",
+            },
+        }
+    ]
+    manifest_lookup = {
+        "harshbaldwa/diun-boost": [
+            {"tag": "1.4.0", "digest": "sha256:manifest-digest"},
+            {"tag": "1.3.1", "digest": "sha256:old-digest"},
+        ]
+    }
+
+    enrich_missing_current_digests(entries, manifest_lookup)
+
+    assert entries[0]["metadata"]["current_digest"] == "sha256:manifest-digest"
 
 
 def test_create_empty_yaml_does_not_overwrite_existing(tmp_path):
