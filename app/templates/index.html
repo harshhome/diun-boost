@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="topbar hero-shell">
+  <div class="hero-copy">
+    <div class="eyebrow-row">
+      <p class="eyebrow">Homelab updates</p>
+      <span class="hero-pill">Read only</span>
+    </div>
+    <h1>{{ app_name }}</h1>
+    <p class="subtle hero-subtitle">A calmer view of pending container updates, grouped by project and built for quick review.</p>
+  </div>
+  <div class="topbar-actions">
+    <button class="button button-primary" id="refresh-button" type="button">
+      <span class="spinner hidden" id="refresh-spinner" aria-hidden="true"></span>
+      <span id="refresh-button-label">Refresh data</span>
+    </button>
+    <a class="button button-secondary" href="/api/report">Raw JSON</a>
+  </div>
+</header>
+
+<section class="status-row">
+  <div class="status-message" id="refresh-status" aria-live="polite">Ready.</div>
+</section>
+
+<div id="dashboard-root">
+{% if error %}
+<section class="panel error-panel">
+  <h2>Unable to load pending updates</h2>
+  <p>{{ error.message }}</p>
+  {% if error.details %}
+  <pre>{{ error.details }}</pre>
+  {% endif %}
+</section>
+{% elif dashboard %}
+<section class="summary-grid">
+  <article class="summary-card summary-card-projects">
+    <span class="summary-label">Projects</span>
+    <strong>{{ dashboard.summary.projects }}</strong>
+    <span class="summary-footnote">Stacks with pending activity</span>
+  </article>
+  <article class="summary-card summary-card-services">
+    <span class="summary-label">Services</span>
+    <strong>{{ dashboard.summary.services }}</strong>
+    <span class="summary-footnote">Individual containers to review</span>
+  </article>
+  <article class="summary-card summary-card-bumps">
+    <span class="summary-label">Tag bumps</span>
+    <strong>{{ dashboard.summary.tag_bumps }}</strong>
+    <span class="summary-footnote">Version changes available</span>
+  </article>
+  <article class="summary-card summary-card-digests">
+    <span class="summary-label">Digest refreshes</span>
+    <strong>{{ dashboard.summary.digest_refreshes }}</strong>
+    <span class="summary-footnote">Same tag, new image digest</span>
+  </article>
+</section>
+
+<section class="panel meta-panel">
+  <span id="generated-at-label" data-generated-at="{{ dashboard.generated_at }}">Last updated just now</span>
+  <span>{{ dashboard.projects | length }} project group(s)</span>
+</section>
+
+{% if dashboard.projects %}
+  {% for project in dashboard.projects %}
+  <section class="panel project-panel">
+    <div class="project-header">
+      <div>
+        <h2>{{ project.name }}</h2>
+        <p class="subtle">{{ project.service_count }} impacted service(s)</p>
+      </div>
+      <span class="project-chip">Project</span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Service</th>
+            <th>Type</th>
+            <th>Current</th>
+            <th>Latest</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for service in project.services %}
+          <tr>
+            <td class="service-name">{{ service.service }}</td>
+            <td>
+              <span class="badge badge-{{ service.update_type.replace('_', '-') }}">{{ service.update_type }}</span>
+            </td>
+            <td><code>{{ service.current }}</code></td>
+            <td><code>{{ service.latest }}</code></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endfor %}
+{% else %}
+<section class="panel empty-state">
+  <div class="empty-icon">✓</div>
+  <h2>No pending updates</h2>
+  <p>DIUN did not report any tag bumps or digest refreshes right now.</p>
+</section>
+{% endif %}
+{% endif %}
+</div>
+
+<script src="/static/app.js" defer></script>
+{% endblock %}
