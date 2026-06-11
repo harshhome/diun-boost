@@ -52,14 +52,17 @@ function renderServiceRow(service) {
 }
 
 function renderProject(project) {
-  const rows = project.services.map(renderServiceRow).join("");
+  const services = Array.isArray(project.services) ? project.services : [];
+  const rows = services.map(renderServiceRow).join("");
+  const serviceCount = project.service_count ?? services.length;
   return `
     <section class="panel project-panel">
       <div class="project-header">
         <div>
           <h2>${escapeHtml(project.name)}</h2>
-          <p class="subtle">${project.services.length} impacted service(s)</p>
+          <p class="subtle">${escapeHtml(serviceCount)} impacted service(s)</p>
         </div>
+        <span class="project-chip">Project</span>
       </div>
       <div class="table-wrap">
         <table>
@@ -84,10 +87,26 @@ function renderDashboard(data) {
 
   const summaryHtml = `
     <section class="summary-grid">
-      <article class="summary-card"><span class="summary-label">Projects</span><strong>${summary.projects ?? 0}</strong></article>
-      <article class="summary-card"><span class="summary-label">Services</span><strong>${summary.services ?? 0}</strong></article>
-      <article class="summary-card"><span class="summary-label">Tag bumps</span><strong>${summary.tag_bumps ?? 0}</strong></article>
-      <article class="summary-card"><span class="summary-label">Digest refreshes</span><strong>${summary.digest_refreshes ?? 0}</strong></article>
+      <article class="summary-card summary-card-projects">
+        <span class="summary-label">Projects</span>
+        <strong>${summary.projects ?? 0}</strong>
+        <span class="summary-footnote">Stacks with pending activity</span>
+      </article>
+      <article class="summary-card summary-card-services">
+        <span class="summary-label">Services</span>
+        <strong>${summary.services ?? 0}</strong>
+        <span class="summary-footnote">Individual containers to review</span>
+      </article>
+      <article class="summary-card summary-card-bumps">
+        <span class="summary-label">Tag bumps</span>
+        <strong>${summary.tag_bumps ?? 0}</strong>
+        <span class="summary-footnote">Version changes available</span>
+      </article>
+      <article class="summary-card summary-card-digests">
+        <span class="summary-label">Digest refreshes</span>
+        <strong>${summary.digest_refreshes ?? 0}</strong>
+        <span class="summary-footnote">Same tag, new image digest</span>
+      </article>
     </section>
     <section class="panel meta-panel">
       <span id="generated-at-label" data-generated-at="${escapeHtml(data.generated_at || "")}">${escapeHtml(getRelativeTimestampText(data.generated_at))}</span>
@@ -134,7 +153,8 @@ async function refreshDashboard() {
   status.textContent = "Refreshing data…";
 
   try {
-    const response = await fetch("/api/report", {
+    const response = await fetch("/api/report/refresh", {
+      method: "POST",
       headers: { Accept: "application/json" },
       cache: "no-store",
     });

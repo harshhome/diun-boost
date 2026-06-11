@@ -27,6 +27,27 @@ def test_api_report_reads_dashboard_snapshot(tmp_path, monkeypatch):
     assert response.json() == snapshot
 
 
+def test_api_report_refresh_generates_live_snapshot(monkeypatch):
+    snapshot = {
+        "generated_at": "2026-06-10T17:05:00+00:00",
+        "projects": [{"name": "arr-stack", "services": []}],
+        "summary": {
+            "projects": 1,
+            "services": 0,
+            "tag_bumps": 0,
+            "digest_refreshes": 0,
+        },
+    }
+
+    monkeypatch.setattr(web, "refresh_dashboard_snapshot", lambda: snapshot)
+
+    client = TestClient(web.app)
+    response = client.post("/api/report/refresh")
+
+    assert response.status_code == 200
+    assert response.json() == snapshot
+
+
 def test_healthz_returns_app_name():
     client = TestClient(web.app)
     response = client.get("/healthz")

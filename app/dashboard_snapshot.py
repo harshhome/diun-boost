@@ -4,6 +4,7 @@ import json
 import re
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
+from typing import Any
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -172,3 +173,28 @@ def write_dashboard_json(snapshot: Mapping[str, object], file_path: str | Path) 
 def load_dashboard_json(file_path: str | Path) -> dict[str, object]:
     path = Path(file_path)
     return json.loads(path.read_text())
+
+
+def extract_pending_service_scope(snapshot: Mapping[str, Any] | None) -> set[tuple[str, str]]:
+    if not isinstance(snapshot, Mapping):
+        return set()
+
+    scope: set[tuple[str, str]] = set()
+    projects = snapshot.get("projects")
+    if not isinstance(projects, Sequence):
+        return scope
+
+    for project in projects:
+        if not isinstance(project, Mapping):
+            continue
+        project_name = project.get("name")
+        services = project.get("services")
+        if not isinstance(project_name, str) or not isinstance(services, Sequence):
+            continue
+        for service in services:
+            if not isinstance(service, Mapping):
+                continue
+            service_name = service.get("service")
+            if isinstance(service_name, str) and service_name:
+                scope.add((project_name, service_name))
+    return scope

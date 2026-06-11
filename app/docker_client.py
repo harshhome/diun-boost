@@ -39,6 +39,31 @@ def get_running_containers(
     return containers
 
 
+def get_containers_for_compose_services(
+    client: DockerClient,
+    scope: set[tuple[str, str]],
+) -> List[Container]:
+    containers_by_id: dict[str, Container] = {}
+    for project, service in scope:
+        matches = client.containers.list(
+            filters={
+                "status": "running",
+                "label": [
+                    f"com.docker.compose.project={project}",
+                    f"com.docker.compose.service={service}",
+                ],
+            }
+        )
+        for container in matches:
+            if container.labels.get("diun.enable") == "false":
+                continue
+            container_id = container.id
+            if not container_id:
+                continue
+            containers_by_id[container_id] = container
+    return list(containers_by_id.values())
+
+
 def extract_digest_from_repo_digests(
     repo_digests: list[str], image_name: str | None = None
 ) -> str | None:

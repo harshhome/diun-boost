@@ -1,11 +1,10 @@
-# diun-boost  🚀 🐳 📦
+# diun-boost
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/harshhome/diun-boost?style=flat)](https://github.com/harshhome/diun-boost/releases/latest)
 [![Docker Image Size (latest by tag)](https://img.shields.io/docker/image-size/harshbaldwa/diun-boost/latest?style=flat)](https://hub.docker.com/r/harshbaldwa/diun-boost)
 [![GitHub Stars](https://img.shields.io/github/stars/harshhome/diun-boost?style=flat)](https://github.com/harshhome/diun-boost/stargazers)
 [![Docker Pulls](https://img.shields.io/docker/pulls/harshbaldwa/diun-boost?style=flat)](https://hub.docker.com/r/harshbaldwa/diun-boost)
 [![Issues](https://img.shields.io/github/issues/harshhome/diun-boost?style=flat)](https://github.com/harshhome/diun-boost/issues)
-
 [![GitHub Repo](https://img.shields.io/badge/GitHub-Repo-black?logo=github&style=flat)](https://github.com/harshhome/diun-boost)
 [![DockerHub](https://img.shields.io/badge/DockerHub-Repo-blue?logo=docker&style=flat)](https://hub.docker.com/r/harshbaldwa/diun-boost)
 [![Made with Python](https://img.shields.io/badge/Made%20with-Python-yellow?logo=python&style=flat)](https://www.python.org/)
@@ -13,128 +12,223 @@
 ![Unit Tests](https://byob.yarr.is/harshhome/diun-boost/unit-tests)
 ![Docker Tests](https://byob.yarr.is/harshhome/diun-boost/docker-tests)
 
-Automated [DIUN](https://crazymax.dev/diun/) File Provider YAML Generator for Smarter Docker Image Monitoring
+Automated DIUN file-provider config generation plus a lightweight dashboard for reviewing pending Docker image updates.
 
-## 📄 General Description
+## What diun-boost does
 
-**diun-boost** is a ⚡ **utility tool** ⚡ that dynamically generates a `config.yml` file designed to be used with DIUN's [File Provider](https://crazymax.dev/diun/providers/file/).
+diun-boost is a companion tool for [DIUN](https://crazymax.dev/diun/):
 
-> *Important*: diun-boost **only generates** the configuration file (`config.yml`) for DIUN. It does **NOT monitor** container updates itself. DIUN will use the generated file to monitor images! 🔍
+- it scans your running Docker containers
+- generates a DIUN file-provider YAML (`config.yml`)
+- preserves your custom metadata across regenerations
+- builds a dashboard snapshot (`dashboard.json`) from DIUN state
+- serves a small web UI for grouped, review-friendly update visibility
 
-This tool simplifies managing large DIUN configurations by automatically creating version-aware watch entries based on your running Docker containers and generate rules that monitors only newer [semver](https://semver.org) tags.
+Important:
+- diun-boost does not replace DIUN
+- DIUN still performs the actual update monitoring
+- diun-boost prepares DIUN input and presents pending results in a cleaner dashboard
 
-## ✨ Features
+## What's new in the current version
 
-### 🧠 Smart Semantic Versioning Support
+Recent changes added a proper dashboard-oriented workflow:
 
-Version matching is **depth-aware** — only tags with the **same number of components** (segments) are compared:
+- built-in FastAPI dashboard UI
+- generated `dashboard.json` snapshot alongside `config.yml`
+- separate cron schedules for config refreshes and dashboard refreshes
+- manual modes for `--config-only` and `--dashboard-only`
+- targeted dashboard refreshes for currently pending Compose services
+- refresh API endpoint at `POST /api/report/refresh`
+- preserved custom metadata on YAML regeneration
+- initial startup now creates the YAML file only if it does not already exist
 
-- ✅ `1.0.0` matches:
-  - `1.0.1`, `1.1.0`, `2.0.0`
-- ✅ `1.0` matches:
-  - `1.1`, `2.0`
-- ✅ `1.2.3.4` matches:
-  - `1.2.3.5`, `1.2.4.0`, `2.0.0.0`
-- ❌ No match to shorter (`1.0`, `1`) or longer (`1.0.0.1`) tags
+## Features
 
-> 📏 All segments must match in **depth** and be **equal or greater** in value.
+### Smart version-aware tag matching
 
-### 🏷️ Arbitrary Prefix Support
+Version matching is depth-aware, so only tags with the same number of version segments are compared.
 
-Supports any prefix (e.g. `v`, `pg`, `nodejs-`, `redis-`), preserving it in all matches:
+Examples:
+- `1.0.0` matches `1.0.1`, `1.1.0`, `2.0.0`
+- `1.0` matches `1.1`, `2.0`
+- `1.2.3.4` matches `1.2.3.5`, `1.2.4.0`, `2.0.0.0`
+- `1.0.0` does not match `1.0`, `1`, or `1.0.0.1`
 
-- Examples:
-  - `v1.0.0`, `pg13.5.1`, `nodejs-18.16.0`, `nginx1.25.3`
+### Prefix-aware tags
 
-### 🎯 Suffix-Aware Version Comparison
+Arbitrary prefixes are preserved in generated matching rules.
 
-Suffixes and their versions are independently compared:
+Examples:
+- `v1.0.0`
+- `pg13.5.1`
+- `nodejs-18.16.0`
+- `nginx1.25.3`
 
-- A tag like `v1.2.0.12-build12` will match:
-  - `v1.2.0.12-build13` ✅ (same main version, higher suffix version)
-  - `v1.2.0.13-build11` ✅ (higher main version, lower suffix version still okay)
-- Both the **main version** and **suffix version** are evaluated using depth-aware comparison
+### Suffix-aware comparisons
 
-### ✅ Non-Semver & Static Tag Matching
+Suffixes are handled independently from the main version.
 
-Tags that don’t follow semantic versioning — like:
-- `latest`, `20240518`, `final-build`, `beta`
-- Are matched **exactly**, no version logic is applied.
+Example:
+- `v1.2.0.12-build12` can match `v1.2.0.12-build13`
+- `v1.2.0.12-build12` can also match `v1.2.0.13-build11`
 
-### 📝 Custom Metadata Preservation
+### Exact matching for non-semver tags
 
-Add your own keys under `metadata` in `config.yml` entries and diun-boost will
-keep them on regeneration (it still updates `current_tag` and optional Docker
-Compose metadata).
+Non-semver or static tags are matched exactly.
 
-### 🔍 Test Regex Live
-👉 Explore the version matching logic and patterns here: [Regex 101 pattern](https://regex101.com/r/u8sAuo/1)
+Examples:
+- `latest`
+- `20240518`
+- `final-build`
+- `beta`
 
-### 🤏 Minimal Setup:
-- Works out of the box using Docker 🐳.
-- Supports linux/amd64 and linux/arm64 architectures.
-- Small and lightweight image (~50MB) 💾
-- No external dependencies required.
-- Built using `python:slim` base image with minimal runtime footprint.
+### Custom metadata preservation
 
-## 🛠️ How to Run
+You can add your own keys under `metadata` in generated DIUN entries. diun-boost keeps those keys when it regenerates the file, while still updating its own auto-managed metadata:
 
-### Using `docker run`
+- `current_tag`
+- `current_digest`
+- `compose_project`
+- `compose_service`
+
+### Dashboard for pending updates
+
+The dashboard snapshot groups updates by Compose project and shows:
+
+- service name
+- update type (`tag_bump` or `digest_refresh`)
+- current tag
+- latest tag
+- summary counts for projects, services, tag bumps, and digest refreshes
+
+### Split refresh pipeline
+
+The container now runs two cron-driven refresh paths:
+
+- config refresh: updates `config.yml`
+- dashboard refresh: updates `dashboard.json`
+
+This makes it possible to tune config generation and dashboard refresh cadence separately.
+
+### Targeted dashboard refreshes
+
+The web UI refresh action uses `POST /api/report/refresh`, which tries to refresh only the Compose services currently shown as pending. If there are no pending services, it reuses the existing empty snapshot without calling Docker or DIUN again.
+
+## How it works
+
+At container startup:
+
+1. diun-boost creates the output YAML file if it does not already exist
+2. it performs an initial config-only refresh
+3. it starts cron for scheduled refreshes
+4. it starts the dashboard web server with Uvicorn
+
+Scheduled jobs:
+
+- `CRON_SCHEDULE` runs `python /app/app/main.py --config-only`
+- `DIUN_DASHBOARD_CRON_SCHEDULE` runs `python /app/app/main.py --dashboard-only`
+
+Manual modes:
+
+- combined refresh: `python /app/app/main.py`
+- first run marker: `python /app/app/main.py --first-run`
+- config only: `python /app/app/main.py --config-only`
+- dashboard only: `python /app/app/main.py --dashboard-only`
+
+## Dashboard requirements
+
+For the dashboard to group updates by project and service, your generated YAML entries need Docker Compose metadata.
+
+Recommended setting:
+
+```env
+DOCKER_COMPOSE_METADATA=true
+```
+
+If Compose metadata is disabled, diun-boost can still generate `config.yml`, but the grouped dashboard view will have little or no useful project/service data.
+
+## Environment variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `DIUN_YAML_PATH` | Path to the generated DIUN file-provider YAML. | `/config/config.yml` |
+| `DIUN_DASHBOARD_JSON_PATH` | Path to the generated dashboard snapshot JSON. | `/config/dashboard.json` |
+| `CRON_SCHEDULE` | Cron expression for regenerating `config.yml`. | `0 */6 * * *` |
+| `DIUN_DASHBOARD_CRON_SCHEDULE` | Cron expression for regenerating `dashboard.json`. | `7 */6 * * *` |
+| `LOG_LEVEL` | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`. | `INFO` |
+| `WATCHBYDEFAULT` | If `true`, watch all running containers except those explicitly labeled `diun.enable=false`. If `false`, only watch containers labeled `diun.enable=true`. | `false` |
+| `DOCKER_COMPOSE_METADATA` | If `true`, include `compose_project` and `compose_service` metadata in generated entries. Strongly recommended for dashboard use. | `false` |
+| `DIUN_CONTAINER_NAME` | Name of the running DIUN container that diun-boost queries for latest/manifests data. | `diun` |
+| `DIUN_DASHBOARD_APP_NAME` | Display name shown in the dashboard UI. | `DIUN Dashboard` |
+| `DIUN_DASHBOARD_BIND_HOST` | Host interface for the dashboard web server. | `0.0.0.0` |
+| `DIUN_DASHBOARD_BIND_PORT` | Port for the dashboard web server. | `8000` |
+
+## Docker run
 
 ```bash
 docker run -d \
   --name diun-boost \
+  -p 8000:8000 \
   -e DIUN_YAML_PATH="/config/config.yml" \
+  -e DIUN_DASHBOARD_JSON_PATH="/config/dashboard.json" \
   -e CRON_SCHEDULE="0 */6 * * *" \
+  -e DIUN_DASHBOARD_CRON_SCHEDULE="7 */6 * * *" \
   -e LOG_LEVEL="INFO" \
   -e WATCHBYDEFAULT="false" \
-  -e DOCKER_COMPOSE_METADATA="false" \
+  -e DOCKER_COMPOSE_METADATA="true" \
+  -e DIUN_CONTAINER_NAME="diun" \
   -v "$(pwd)/config:/config" \
   -v "/var/run/docker.sock:/var/run/docker.sock" \
-  harshbaldwa/diun-boost:1.3.0
+  harshbaldwa/diun-boost:latest
 ```
 
-#### Environment Variables
+Then open:
 
-| Variable        | Description                                                                                                                                           | Default Value        |
-|------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------|
-| `DIUN_YAML_PATH` | Path to the shared `config.yml` file that DIUN will read.                                                                                               | `/config/config.yml`  |
-| `CRON_SCHEDULE`  | Cron schedule expression to control how often the YAML file is regenerated.                                                                           | `0 */6 * * *`          |
-| `LOG_LEVEL`      | Logging level for diun-boost. Available options: `DEBUG`, `INFO`, `WARNING`, `ERROR`.                                                                  | `INFO`                |
-| `WATCHBYDEFAULT` | Set to `true` to watch **all running containers** by default. <br> However, any container explicitly labeled with `diun.enable=false` will always be excluded. <br> If set to `false`, only containers with the label `diun.enable=true` are watched. | `false`               |
-| `DOCKER_COMPOSE_METADATA` | Set to `true` to include Docker Compose metadata in the generated YAML file. <br> This is useful for identifying containers in a multi-container setup as well as for notifications with DIUN. <br> If set to `false`, only the container name will be used. | `false`               |
+- dashboard UI: `http://localhost:8000/`
+- raw snapshot: `http://localhost:8000/api/report`
+- health check: `http://localhost:8000/healthz`
 
-
-#### Volume Mounts
-
-| Mount Path               | Description                                           |
-|----------------------------|-------------------------------------------------------|
-| `/var/run/docker.sock`     | Required for accessing the Docker API from the container. |
-| `$(pwd)/config`            | Local directory to store the generated `config.yml` file.  |
-
-### Using Docker Compose
+## Docker Compose example
 
 ```yaml
 services:
+  diun:
+    container_name: diun
+    image: crazymax/diun:latest
+    volumes:
+      - ./data:/data
+      - ./diun.yml:/diun.yml:ro
+      - ./config:/config:ro
+    environment:
+      - TZ=America/New_York
+    restart: unless-stopped
+
   diun-boost:
     container_name: diun-boost
-    image: harshbaldwa/diun-boost:1.3.0
+    image: harshbaldwa/diun-boost:latest
+    depends_on:
+      - diun
+    ports:
+      - "8000:8000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./config:/config
     environment:
       - DIUN_YAML_PATH=/config/config.yml
+      - DIUN_DASHBOARD_JSON_PATH=/config/dashboard.json
       - CRON_SCHEDULE=0 */6 * * *
+      - DIUN_DASHBOARD_CRON_SCHEDULE=7 */6 * * *
       - LOG_LEVEL=INFO
       - WATCHBYDEFAULT=false
-      - DOCKER_COMPOSE_METADATA=false
+      - DOCKER_COMPOSE_METADATA=true
+      - DIUN_CONTAINER_NAME=diun
+      - DIUN_DASHBOARD_APP_NAME=DIUN Dashboard
     restart: unless-stopped
 ```
 
->**🔥 Tip**: Adjust volume mounts to match your environment.
+## DIUN configuration example
 
-### 📜 Sample Dummy Code for Diun
-Example base `diun.yml` file for DIUN:
+Base `diun.yml` for DIUN:
 
 ```yaml
 watch:
@@ -149,46 +243,61 @@ providers:
   file:
     filename: /config/config.yml
 ```
-`docker-compose.yml` file for DIUN and **diun-boost**:
+
+## Example generated entry
 
 ```yaml
-services:
-  diun:
-    container_name: diun
-    image: crazymax/diun:latest
-    volumes:
-      - ./data:/data
-      - ./diun.yml:/diun.yml:ro
-      - ./config:/config:ro
-    environment:
-      - "TZ=America/New_York"
-    restart: unless-stopped
-    
-  diun-boost:
-    container_name: diun-boost
-    image: harshbaldwa/diun-boost:1.3.0
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./config:/config
-    environment:
-      - DIUN_YAML_PATH=/config/config.yml
-      - CRON_SCHEDULE=0 */6 * * *
-      - LOG_LEVEL=INFO
-      - WATCHBYDEFAULT=false
-      - DOCKER_COMPOSE_METADATA=false
-    restart: unless-stopped
+- name: linuxserver/sonarr:4.0.17
+  notify_on:
+    - new
+    - update
+  metadata:
+    current_tag: 4.0.17
+    current_digest: sha256:...
+    compose_project: arr-stack
+    compose_service: sonarr
+    team: media
+    severity: normal
+  watch_repo: true
+  include_tags:
+    - ^((?:5|[6-9]\d*)\.\d+\.\d+|4\.(?:1|[2-9]\d*)\.\d+|4.0\.(?:17|[1-9]\d*))$
 ```
 
-## ❤️ Support This Project
+User-defined metadata like `team` and `severity` is preserved across future regenerations.
 
-If you find diun-boost useful, fuel its growth by buying me a coffee!
+## Dashboard API
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/harshbaldwa)
+- `GET /` - HTML dashboard
+- `GET /api/report` - return the current `dashboard.json`
+- `POST /api/report/refresh` - perform a targeted live refresh and return the refreshed snapshot
+- `GET /healthz` - simple health endpoint
 
-Every coffee helps keep open-source alive and thriving! 🚀
+## Notes and behavior
 
-## 📜 License
+- Containers with `diun.enable=false` are always excluded.
+- When `WATCHBYDEFAULT=false`, only containers with `diun.enable=true` are included.
+- When `WATCHBYDEFAULT=true`, all running containers are included except explicit opt-outs.
+- The dashboard distinguishes between:
+  - `tag_bump`: current tag differs from latest tag
+  - `digest_refresh`: tag is unchanged but image digest changed
+- `dashboard.json` is only rewritten when content changes.
+- `config.yml` is only rewritten when content changes.
+- If `dashboard.json` already shows no pending services, the targeted refresh path returns that snapshot as-is.
+
+## Local development
+
+Run the test suite from the repository root:
+
+```bash
+pytest
+```
+
+## Support
+
+If you find diun-boost useful, consider supporting the project:
+
+[Buy Me A Coffee](https://www.buymeacoffee.com/harshbaldwa)
+
+## License
 
 This project is licensed under the MIT License.
-
-> Made with ❤️ by **Harshvardhan Baldwa** for the homelab and DevOps community!
