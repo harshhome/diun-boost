@@ -28,6 +28,7 @@ crontab /etc/cron.d/diunboost
 
 . /etc/cron.d/env-vars
 /usr/local/bin/python /app/app/main.py --first-run --config-only
+/usr/local/bin/python /app/app/main.py --dashboard-only
 
 cron
 exec uvicorn app.web:app --host "${DIUN_DASHBOARD_BIND_HOST:-0.0.0.0}" --port "${DIUN_DASHBOARD_BIND_PORT:-8000}"

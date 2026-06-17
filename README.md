@@ -36,6 +36,7 @@ Recent changes added a proper dashboard-oriented workflow:
 
 - built-in FastAPI dashboard UI
 - generated `dashboard.json` snapshot alongside `config.yml`
+- initial `dashboard.json` generation during container startup
 - separate cron schedules for config refreshes and dashboard refreshes
 - manual modes for `--config-only` and `--dashboard-only`
 - targeted dashboard refreshes for currently pending Compose services
@@ -129,8 +130,9 @@ At container startup:
 
 1. diun-boost creates the output YAML file if it does not already exist
 2. it performs an initial config-only refresh
-3. it starts cron for scheduled refreshes
-4. it starts the dashboard web server with Uvicorn
+3. it generates an initial `dashboard.json` snapshot from the saved config and DIUN state
+4. it starts cron for scheduled refreshes
+5. it starts the dashboard web server with Uvicorn
 
 Scheduled jobs:
 
