@@ -27,6 +27,11 @@ def version_key(tag: str | None):
     return tuple(int(n) for n in nums)
 
 
+def matches_include_tags(tag: str, include_tags: Sequence[str] | None) -> bool:
+    patterns = [re.compile(pattern) for pattern in (include_tags or [])]
+    return not patterns or any(pattern.match(tag) for pattern in patterns)
+
+
 def select_latest_manifest(
     image_name: str,
     include_tags: Sequence[str] | None,
@@ -92,9 +97,16 @@ def build_dashboard_snapshot(
         if not isinstance(latest_record, Mapping):
             continue
 
+        raw_include_tags = entry.get("include_tags")
+        include_tags = (
+            [pattern for pattern in raw_include_tags if isinstance(pattern, str)]
+            if isinstance(raw_include_tags, Sequence)
+            and not isinstance(raw_include_tags, (str, bytes))
+            else None
+        )
         latest = select_latest_manifest(
             image_name,
-            entry.get("include_tags") if isinstance(entry.get("include_tags"), Sequence) else None,
+            include_tags,
             current_tag,
             manifest_lookup,
         )
@@ -106,6 +118,12 @@ def build_dashboard_snapshot(
         latest_tag = latest.get("tag")
         latest_digest = latest.get("digest")
         if not isinstance(latest_tag, str) or not latest_tag:
+            continue
+        if not matches_include_tags(latest_tag, include_tags):
+            continue
+        current_version = version_key(current_tag)
+        latest_version = version_key(latest_tag)
+        if current_version is not None and latest_version is not None and latest_version < current_version:
             continue
         if not isinstance(latest_digest, str) or not latest_digest:
             continue

@@ -5,6 +5,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/harshhome/diun-boost?style=flat)](https://github.com/harshhome/diun-boost/stargazers)
 [![Docker Pulls](https://img.shields.io/docker/pulls/harshbaldwa/diun-boost?style=flat)](https://hub.docker.com/r/harshbaldwa/diun-boost)
 [![Issues](https://img.shields.io/github/issues/harshhome/diun-boost?style=flat)](https://github.com/harshhome/diun-boost/issues)
+
 [![GitHub Repo](https://img.shields.io/badge/GitHub-Repo-black?logo=github&style=flat)](https://github.com/harshhome/diun-boost)
 [![DockerHub](https://img.shields.io/badge/DockerHub-Repo-blue?logo=docker&style=flat)](https://hub.docker.com/r/harshbaldwa/diun-boost)
 [![Made with Python](https://img.shields.io/badge/Made%20with-Python-yellow?logo=python&style=flat)](https://www.python.org/)
@@ -39,6 +40,9 @@ Recent changes added a proper dashboard-oriented workflow:
 - manual modes for `--config-only` and `--dashboard-only`
 - targeted dashboard refreshes for currently pending Compose services
 - refresh API endpoint at `POST /api/report/refresh`
+- hard refresh API endpoint at `POST /api/report/hard-refresh`
+- dashboard filtering now respects generated `include_tags` rules
+- dashboard downgrade protection skips latest tags that are numerically older than the current tag
 - preserved custom metadata on YAML regeneration
 - initial startup now creates the YAML file only if it does not already exist
 
@@ -101,6 +105,8 @@ The dashboard snapshot groups updates by Compose project and shows:
 - latest tag
 - summary counts for projects, services, tag bumps, and digest refreshes
 
+Dashboard candidate selection follows the same generated `include_tags` rules used by DIUN. This prevents the dashboard from showing an update candidate that DIUN itself would not watch. It also skips numeric downgrades, so a registry-reported `4.0.0` latest tag will not be reported as pending when the running container is already on `4.0.1`.
+
 ### Split refresh pipeline
 
 The container now runs two cron-driven refresh paths:
@@ -110,9 +116,12 @@ The container now runs two cron-driven refresh paths:
 
 This makes it possible to tune config generation and dashboard refresh cadence separately.
 
-### Targeted dashboard refreshes
+### Dashboard refresh modes
 
-The web UI refresh action uses `POST /api/report/refresh`, which tries to refresh only the Compose services currently shown as pending. If there are no pending services, it reuses the existing empty snapshot without calling Docker or DIUN again.
+The web UI has two refresh actions:
+
+- `Refresh data` uses `POST /api/report/refresh`. This is the normal fast path: it refreshes only the Compose services currently shown as pending. If there are no pending services, it reuses the existing empty snapshot without calling Docker or DIUN again.
+- `Hard refresh` uses `POST /api/report/hard-refresh`. This runs the full dashboard generator, scans containers using the current `WATCHBYDEFAULT` and `DOCKER_COMPOSE_METADATA` settings, refreshes `config.yml` when needed, and writes a fresh `dashboard.json`.
 
 ## How it works
 
@@ -270,6 +279,7 @@ User-defined metadata like `team` and `severity` is preserved across future rege
 - `GET /` - HTML dashboard
 - `GET /api/report` - return the current `dashboard.json`
 - `POST /api/report/refresh` - perform a targeted live refresh and return the refreshed snapshot
+- `POST /api/report/hard-refresh` - perform a full live refresh, update `config.yml` if needed, and return the refreshed snapshot
 - `GET /healthz` - simple health endpoint
 
 ## Notes and behavior
@@ -283,6 +293,9 @@ User-defined metadata like `team` and `severity` is preserved across future rege
 - `dashboard.json` is only rewritten when content changes.
 - `config.yml` is only rewritten when content changes.
 - If `dashboard.json` already shows no pending services, the targeted refresh path returns that snapshot as-is.
+- The dashboard ignores latest tags that do not match an entry's `include_tags` rules.
+- The dashboard ignores numeric downgrades when both the current and latest tags contain version numbers.
+- Use hard refresh when you want to rescan all eligible containers instead of only refreshing services already shown as pending.
 
 ## Local development
 

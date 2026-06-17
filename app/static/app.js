@@ -136,12 +136,15 @@ function renderError(error) {
   `;
 }
 
-async function refreshDashboard() {
+async function refreshDashboard(options = {}) {
   const root = document.getElementById("dashboard-root");
-  const button = document.getElementById("refresh-button");
-  const spinner = document.getElementById("refresh-spinner");
-  const buttonLabel = document.getElementById("refresh-button-label");
+  const button = options.button || document.getElementById("refresh-button");
+  const spinner = button?.querySelector(".spinner");
+  const buttonLabel = button?.querySelector(".refresh-button-label");
   const status = document.getElementById("refresh-status");
+  const refreshUrl = options.url || "/api/report/refresh";
+  const idleLabel = options.idleLabel || "Refresh data";
+  const loadingLabel = options.loadingLabel || "Refreshing…";
 
   if (!root || !button || !spinner || !buttonLabel || !status) {
     return;
@@ -149,11 +152,11 @@ async function refreshDashboard() {
 
   button.disabled = true;
   spinner.classList.remove("hidden");
-  buttonLabel.textContent = "Refreshing…";
+  buttonLabel.textContent = loadingLabel;
   status.textContent = "Refreshing data…";
 
   try {
-    const response = await fetch("/api/report/refresh", {
+    const response = await fetch(refreshUrl, {
       method: "POST",
       headers: { Accept: "application/json" },
       cache: "no-store",
@@ -178,14 +181,24 @@ async function refreshDashboard() {
   } finally {
     button.disabled = false;
     spinner.classList.add("hidden");
-    buttonLabel.textContent = "Refresh data";
+    buttonLabel.textContent = idleLabel;
   }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   const button = document.getElementById("refresh-button");
   if (button) {
-    button.addEventListener("click", refreshDashboard);
+    button.addEventListener("click", () => refreshDashboard({ button }));
+  }
+
+  const hardButton = document.getElementById("hard-refresh-button");
+  if (hardButton) {
+    hardButton.addEventListener("click", () => refreshDashboard({
+      button: hardButton,
+      url: "/api/report/hard-refresh",
+      idleLabel: "Hard refresh",
+      loadingLabel: "Hard refreshing…",
+    }));
   }
 
   updateGeneratedAtLabel();
