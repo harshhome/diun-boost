@@ -40,6 +40,20 @@ function updateGeneratedAtLabel(value) {
   label.textContent = getRelativeTimestampText(timestamp);
 }
 
+function updateRefreshStatus(value) {
+  const status = document.getElementById("refresh-status");
+  if (!status) return;
+
+  if (value) {
+    status.dataset.generatedAt = value;
+  }
+
+  const timestamp = status.dataset.generatedAt;
+  if (timestamp) {
+    status.textContent = `${getRelativeTimestampText(timestamp)}.`;
+  }
+}
+
 function renderServiceRow(service) {
   return `
     <tr>
@@ -117,6 +131,7 @@ function renderDashboard(data) {
   if (!projects.length) {
     return `${summaryHtml}
       <section class="panel empty-state">
+        <div class="empty-icon">✓</div>
         <h2>No pending updates</h2>
         <p>DIUN did not report any tag bumps or digest refreshes right now.</p>
       </section>
@@ -171,7 +186,7 @@ async function refreshDashboard(options = {}) {
 
     root.innerHTML = renderDashboard(payload);
     updateGeneratedAtLabel(payload.generated_at);
-    status.textContent = getRelativeTimestampText(payload.generated_at) + ".";
+    updateRefreshStatus(payload.generated_at);
   } catch (error) {
     root.innerHTML = renderError({
       message: "Could not refresh dashboard data.",
@@ -202,5 +217,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   updateGeneratedAtLabel();
-  window.setInterval(() => updateGeneratedAtLabel(), 60_000);
+  updateRefreshStatus();
+  window.setInterval(() => {
+    updateGeneratedAtLabel();
+    updateRefreshStatus();
+  }, 60_000);
 });

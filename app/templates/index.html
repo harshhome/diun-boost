@@ -24,7 +24,7 @@
 </header>
 
 <section class="status-row">
-  <div class="status-message" id="refresh-status" aria-live="polite">Ready.</div>
+  <div class="status-message" id="refresh-status" aria-live="polite"{% if dashboard and dashboard.generated_at %} data-generated-at="{{ dashboard.generated_at }}"{% endif %}>{% if dashboard and dashboard.generated_at %}Last updated just now.{% else %}Ready.{% endif %}</div>
 </section>
 
 <div id="dashboard-root">
