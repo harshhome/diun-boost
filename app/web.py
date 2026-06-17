@@ -13,7 +13,9 @@ from app.diun_client import DiunClientError
 from app.main import (
     DEFAULT_COMPOSE_TRACK,
     DEFAULT_DIUN_CONTAINER_NAME,
+    DEFAULT_MONITOR_ALL,
     DEFAULT_OUTPUT_PATH,
+    generate_dashboard_snapshot,
     generate_targeted_dashboard_snapshot,
 )
 
@@ -45,6 +47,22 @@ def refresh_dashboard_snapshot() -> dict[str, object]:
             str(DASHBOARD_JSON_PATH),
             compose_track=DEFAULT_COMPOSE_TRACK,
             diun_container_name=DEFAULT_DIUN_CONTAINER_NAME,
+        )
+        write_dashboard_json(snapshot, DASHBOARD_JSON_PATH)
+        return snapshot
+    except DiunClientError as exc:
+        raise DashboardLoadError(str(exc)) from exc
+    except Exception as exc:  # pragma: no cover - defensive runtime guard
+        raise DashboardLoadError(str(exc)) from exc
+
+
+def refresh_dashboard_snapshot_hard() -> dict[str, object]:
+    try:
+        snapshot = generate_dashboard_snapshot(
+            DEFAULT_OUTPUT_PATH,
+            DEFAULT_MONITOR_ALL,
+            DEFAULT_COMPOSE_TRACK,
+            DEFAULT_DIUN_CONTAINER_NAME,
         )
         write_dashboard_json(snapshot, DASHBOARD_JSON_PATH)
         return snapshot
@@ -99,5 +117,16 @@ def api_report_refresh() -> JSONResponse:
     except DashboardLoadError as exc:
         return JSONResponse(
             {"message": "Unable to refresh pending updates", "details": str(exc)},
+            status_code=502,
+        )
+
+
+@app.post("/api/report/hard-refresh")
+def api_report_hard_refresh() -> JSONResponse:
+    try:
+        return JSONResponse(refresh_dashboard_snapshot_hard())
+    except DashboardLoadError as exc:
+        return JSONResponse(
+            {"message": "Unable to hard refresh pending updates", "details": str(exc)},
             status_code=502,
         )

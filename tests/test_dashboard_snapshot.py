@@ -103,3 +103,78 @@ def test_build_dashboard_snapshot_skips_entries_without_pending_updates():
         "digest_refreshes": 0,
     }
     assert snapshot["projects"] == []
+
+
+def test_build_dashboard_snapshot_does_not_fall_back_to_latest_outside_include_tags():
+    snapshot = build_dashboard_snapshot(
+        [
+            {
+                "name": "teslamate/teslamate:4.0.1",
+                "metadata": {
+                    "compose_project": "teslamate",
+                    "compose_service": "teslamate",
+                    "current_tag": "4.0.1",
+                    "current_digest": "sha256:current",
+                },
+                "include_tags": [r"^4\.0\.(?:[1-9]|\d{2,})$"],
+            }
+        ],
+        {
+            "teslamate/teslamate": {
+                "name": "teslamate/teslamate",
+                "latest": {
+                    "tag": "4.0.0",
+                    "digest": "sha256:old",
+                    "created": "2026-06-10T16:00:00Z",
+                },
+            }
+        },
+        manifest_lookup={
+            "teslamate/teslamate": [
+                {"tag": "4.0.0", "digest": "sha256:old", "created": "2026-06-10T16:00:00Z"},
+                {"tag": "3.1.0", "digest": "sha256:older", "created": "2026-06-09T16:00:00Z"},
+            ]
+        },
+    )
+
+    assert snapshot["summary"] == {
+        "projects": 0,
+        "services": 0,
+        "tag_bumps": 0,
+        "digest_refreshes": 0,
+    }
+    assert snapshot["projects"] == []
+
+
+def test_build_dashboard_snapshot_does_not_report_numeric_downgrade():
+    snapshot = build_dashboard_snapshot(
+        [
+            {
+                "name": "teslamate/teslamate:4.0.1",
+                "metadata": {
+                    "compose_project": "teslamate",
+                    "compose_service": "teslamate",
+                    "current_tag": "4.0.1",
+                    "current_digest": "sha256:current",
+                },
+            }
+        ],
+        {
+            "teslamate/teslamate": {
+                "name": "teslamate/teslamate",
+                "latest": {
+                    "tag": "4.0.0",
+                    "digest": "sha256:old",
+                    "created": "2026-06-10T16:00:00Z",
+                },
+            }
+        },
+    )
+
+    assert snapshot["summary"] == {
+        "projects": 0,
+        "services": 0,
+        "tag_bumps": 0,
+        "digest_refreshes": 0,
+    }
+    assert snapshot["projects"] == []
