@@ -185,7 +185,7 @@ def enrich_missing_current_digests(
         if not isinstance(entry, dict):
             continue
         metadata = entry.get("metadata")
-        if not isinstance(metadata, dict) or metadata.get("current_digest"):
+        if not isinstance(metadata, dict):
             continue
         name = entry.get("name")
         current_tag = metadata.get("current_tag")
@@ -198,7 +198,8 @@ def enrich_missing_current_digests(
                 continue
             digest = manifest.get("digest")
             if isinstance(digest, str) and digest:
-                metadata["current_digest"] = digest
+                if metadata.get("current_digest") != digest:
+                    metadata["current_digest"] = digest
                 break
     return entries
 
