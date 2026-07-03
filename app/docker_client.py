@@ -82,10 +82,51 @@ def extract_digest_from_repo_digests(
     return None
 
 
+def canonical_repo_name(name: str) -> str:
+    name = name.removeprefix("docker.io/")
+    if "/" not in name:
+        return f"library/{name}"
+    return name
+
+
+def get_container_repo_digests(container: Container) -> list[str]:
+    """Return all registry manifest/index digests Docker has for an image.
+
+    Docker image IDs are local config digests and are intentionally not used here.
+    RepoDigests are registry digests in the same sha256:<hex> form reported by DIUN.
+    """
+    image_names = []
+    for image_tag in container.image.tags or []:
+        if ":" not in image_tag:
+            continue
+        image_names.append(canonical_repo_name(image_tag.rsplit(":", 1)[0]))
+    image_name_set = set(image_names)
+
+    matching_digests: list[str] = []
+    fallback_digests: list[str] = []
+    seen_matching: set[str] = set()
+    seen_fallback: set[str] = set()
+
+    for repo_digest in container.image.attrs.get("RepoDigests", []) or []:
+        if not isinstance(repo_digest, str) or "@" not in repo_digest:
+            continue
+        repo_name, digest = repo_digest.split("@", 1)
+        if not digest:
+            continue
+        canonical_name = canonical_repo_name(repo_name)
+        if not image_name_set or canonical_name in image_name_set:
+            if digest not in seen_matching:
+                matching_digests.append(digest)
+                seen_matching.add(digest)
+        elif digest not in seen_fallback:
+            fallback_digests.append(digest)
+            seen_fallback.add(digest)
+
+    if matching_digests:
+        return matching_digests
+    return fallback_digests
+
+
 def get_container_current_digest(container: Container) -> str | None:
-    image_name = None
-    image_tags = container.image.tags or []
-    if image_tags:
-        image_name = image_tags[0].rsplit(":", 1)[0]
-    repo_digests = container.image.attrs.get("RepoDigests", [])
-    return extract_digest_from_repo_digests(repo_digests, image_name=image_name)
+    repo_digests = get_container_repo_digests(container)
+    return repo_digests[0] if repo_digests else None

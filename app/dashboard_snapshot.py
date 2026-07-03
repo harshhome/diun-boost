@@ -88,6 +88,13 @@ def build_dashboard_snapshot(
         service = metadata.get("compose_service")
         current_tag = metadata.get("current_tag")
         current_digest = metadata.get("current_digest")
+        raw_current_repo_digests = metadata.get("current_repo_digests")
+        current_repo_digests = (
+            [digest for digest in raw_current_repo_digests if isinstance(digest, str) and digest]
+            if isinstance(raw_current_repo_digests, Sequence)
+            and not isinstance(raw_current_repo_digests, (str, bytes))
+            else []
+        )
         full_image = entry.get("name")
         if not all(isinstance(value, str) and value for value in [project, service, current_tag, full_image]):
             continue
@@ -132,6 +139,8 @@ def build_dashboard_snapshot(
         if current_tag != latest_tag:
             update_type = "tag_bump"
             tag_bumps += 1
+        elif latest_digest in current_repo_digests:
+            continue
         elif isinstance(current_digest, str) and current_digest and current_digest != latest_digest:
             update_type = "digest_refresh"
             digest_refreshes += 1

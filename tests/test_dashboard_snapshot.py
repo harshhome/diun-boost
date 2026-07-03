@@ -105,6 +105,106 @@ def test_build_dashboard_snapshot_skips_entries_without_pending_updates():
     assert snapshot["projects"] == []
 
 
+
+def test_build_dashboard_snapshot_skips_digest_refresh_when_latest_is_in_repo_digests():
+    snapshot = build_dashboard_snapshot(
+        [
+            {
+                "name": "redis:8.8.0",
+                "metadata": {
+                    "compose_project": "paperless",
+                    "compose_service": "paperless-redis",
+                    "current_tag": "8.8.0",
+                    "current_digest": "sha256:027002f3",
+                    "current_repo_digests": ["sha256:027002f3", "sha256:2838d552"],
+                },
+            }
+        ],
+        {
+            "library/redis": {
+                "name": "library/redis",
+                "latest": {
+                    "tag": "8.8.0",
+                    "digest": "sha256:2838d552",
+                    "created": "2026-06-10T16:00:00Z",
+                },
+            }
+        },
+    )
+
+    assert snapshot["summary"]["digest_refreshes"] == 0
+    assert snapshot["projects"] == []
+
+
+def test_build_dashboard_snapshot_reports_digest_refresh_when_latest_missing_from_repo_digests():
+    snapshot = build_dashboard_snapshot(
+        [
+            {
+                "name": "redis:8.8.0",
+                "metadata": {
+                    "compose_project": "paperless",
+                    "compose_service": "paperless-redis",
+                    "current_tag": "8.8.0",
+                    "current_digest": "sha256:027002f3",
+                    "current_repo_digests": ["sha256:027002f3"],
+                },
+            }
+        ],
+        {
+            "library/redis": {
+                "name": "library/redis",
+                "latest": {
+                    "tag": "8.8.0",
+                    "digest": "sha256:2838d552",
+                    "created": "2026-06-10T16:00:00Z",
+                },
+            }
+        },
+    )
+
+    assert snapshot["summary"]["digest_refreshes"] == 1
+    assert snapshot["projects"] == [
+        {
+            "name": "paperless",
+            "services": [
+                {
+                    "service": "paperless-redis",
+                    "update_type": "digest_refresh",
+                    "current": "8.8.0",
+                    "latest": "8.8.0",
+                }
+            ],
+        }
+    ]
+
+
+def test_build_dashboard_snapshot_preserves_digest_compatibility_without_repo_digests():
+    snapshot = build_dashboard_snapshot(
+        [
+            {
+                "name": "redis:8.8.0",
+                "metadata": {
+                    "compose_project": "paperless",
+                    "compose_service": "paperless-redis",
+                    "current_tag": "8.8.0",
+                    "current_digest": "sha256:027002f3",
+                },
+            }
+        ],
+        {
+            "library/redis": {
+                "name": "library/redis",
+                "latest": {
+                    "tag": "8.8.0",
+                    "digest": "sha256:2838d552",
+                    "created": "2026-06-10T16:00:00Z",
+                },
+            }
+        },
+    )
+
+    assert snapshot["summary"]["digest_refreshes"] == 1
+
 def test_build_dashboard_snapshot_does_not_fall_back_to_latest_outside_include_tags():
     snapshot = build_dashboard_snapshot(
         [
