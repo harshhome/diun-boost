@@ -49,6 +49,7 @@ def test_merge_custom_metadata_ignores_auto_keys():
             "compose_service": "web",
             "current_digest": "sha256:old",
             "current_repo_digests": ["sha256:old"],
+            "release_notes_url": "https://github.com/example/releases",
             "note": "keep",
         }}
     ]
@@ -59,6 +60,7 @@ def test_merge_custom_metadata_ignores_auto_keys():
     merged = merge_custom_metadata(generated, existing)
 
     assert merged[0]["metadata"]["current_tag"] == "1"
+    assert merged[0]["metadata"]["release_notes_url"] == "https://github.com/example/releases"
     assert merged[0]["metadata"]["note"] == "keep"
     assert "compose_project" not in merged[0]["metadata"]
     assert "compose_service" not in merged[0]["metadata"]

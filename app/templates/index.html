@@ -71,7 +71,7 @@
     <div class="project-header">
       <div>
         <h2>{{ project.name }}</h2>
-        <p class="subtle">{{ project.service_count }} impacted service(s)</p>
+        <p class="subtle">{{ project.services | length }} impacted service(s)</p>
       </div>
       <span class="project-chip">Project</span>
     </div>
@@ -89,7 +89,39 @@
         <tbody>
           {% for service in project.services %}
           <tr>
-            <td class="service-name">{{ service.service }}</td>
+            <td class="service-name">
+              <div class="service-title-row">
+                <span class="service-title">{{ service.service }}</span>
+                {% if service.release_notes_url %}
+                <a
+                  class="release-notes-icon-link"
+                  href="{{ service.release_notes_url }}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Release notes"
+                  aria-label="Release notes for {{ service.service }}"
+                >
+                  <svg
+                    class="release-notes-icon"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <path d="M14 2v6h6"/>
+                    <path d="M16 13H8"/>
+                    <path d="M16 17H8"/>
+                    <path d="M10 9H8"/>
+                  </svg>
+                </a>
+                {% endif %}
+              </div>
+            </td>
             <td>
               <span class="badge badge-{{ service.update_type.replace('_', '-') }}">{{ service.update_type }}</span>
             </td>

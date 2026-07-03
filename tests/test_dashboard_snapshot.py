@@ -178,6 +178,103 @@ def test_build_dashboard_snapshot_reports_digest_refresh_when_latest_missing_fro
     ]
 
 
+def test_build_dashboard_snapshot_includes_valid_release_notes_url():
+    snapshot = build_dashboard_snapshot(
+        [
+            {
+                "name": "redis:8.8.0",
+                "metadata": {
+                    "compose_project": "paperless",
+                    "compose_service": "paperless-redis",
+                    "current_tag": "8.8.0",
+                    "current_digest": "sha256:027002f3",
+                    "release_notes_url": "https://github.com/redis/redis/releases",
+                },
+            }
+        ],
+        {
+            "library/redis": {
+                "name": "library/redis",
+                "latest": {
+                    "tag": "8.8.0",
+                    "digest": "sha256:2838d552",
+                    "created": "2026-06-10T16:00:00Z",
+                },
+            }
+        },
+    )
+
+    service = snapshot["projects"][0]["services"][0]
+    assert service["release_notes_url"] == "https://github.com/redis/redis/releases"
+
+
+def test_build_dashboard_snapshot_omits_release_notes_url_when_missing():
+    snapshot = build_dashboard_snapshot(
+        [
+            {
+                "name": "redis:8.8.0",
+                "metadata": {
+                    "compose_project": "paperless",
+                    "compose_service": "paperless-redis",
+                    "current_tag": "8.8.0",
+                    "current_digest": "sha256:027002f3",
+                },
+            }
+        ],
+        {
+            "library/redis": {
+                "name": "library/redis",
+                "latest": {
+                    "tag": "8.8.0",
+                    "digest": "sha256:2838d552",
+                    "created": "2026-06-10T16:00:00Z",
+                },
+            }
+        },
+    )
+
+    service = snapshot["projects"][0]["services"][0]
+    assert "release_notes_url" not in service
+
+
+def test_build_dashboard_snapshot_ignores_invalid_release_notes_url_values():
+    invalid_values = [
+        "github.com/redis/redis/releases",
+        "ftp://example.com/releases",
+        123,
+        None,
+    ]
+
+    for invalid_value in invalid_values:
+        snapshot = build_dashboard_snapshot(
+            [
+                {
+                    "name": "redis:8.8.0",
+                    "metadata": {
+                        "compose_project": "paperless",
+                        "compose_service": "paperless-redis",
+                        "current_tag": "8.8.0",
+                        "current_digest": "sha256:027002f3",
+                        "release_notes_url": invalid_value,
+                    },
+                }
+            ],
+            {
+                "library/redis": {
+                    "name": "library/redis",
+                    "latest": {
+                        "tag": "8.8.0",
+                        "digest": "sha256:2838d552",
+                        "created": "2026-06-10T16:00:00Z",
+                    },
+                }
+            },
+        )
+
+        service = snapshot["projects"][0]["services"][0]
+        assert "release_notes_url" not in service
+
+
 def test_build_dashboard_snapshot_preserves_digest_compatibility_without_repo_digests():
     snapshot = build_dashboard_snapshot(
         [

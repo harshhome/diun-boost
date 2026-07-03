@@ -32,6 +32,10 @@ def matches_include_tags(tag: str, include_tags: Sequence[str] | None) -> bool:
     return not patterns or any(pattern.match(tag) for pattern in patterns)
 
 
+def is_valid_release_notes_url(value: object) -> bool:
+    return isinstance(value, str) and value.startswith(("http://", "https://"))
+
+
 def select_latest_manifest(
     image_name: str,
     include_tags: Sequence[str] | None,
@@ -88,6 +92,7 @@ def build_dashboard_snapshot(
         service = metadata.get("compose_service")
         current_tag = metadata.get("current_tag")
         current_digest = metadata.get("current_digest")
+        release_notes_url = metadata.get("release_notes_url")
         raw_current_repo_digests = metadata.get("current_repo_digests")
         current_repo_digests = (
             [digest for digest in raw_current_repo_digests if isinstance(digest, str) and digest]
@@ -147,14 +152,16 @@ def build_dashboard_snapshot(
         else:
             continue
 
-        grouped[project].append(
-            {
-                "service": service,
-                "update_type": update_type,
-                "current": current_tag,
-                "latest": latest_tag,
-            }
-        )
+        service_item = {
+            "service": service,
+            "update_type": update_type,
+            "current": current_tag,
+            "latest": latest_tag,
+        }
+        if is_valid_release_notes_url(release_notes_url):
+            service_item["release_notes_url"] = release_notes_url
+
+        grouped[project].append(service_item)
 
     projects = [
         {"name": project, "services": sorted(services, key=lambda item: item["service"])}
