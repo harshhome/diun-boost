@@ -32,6 +32,10 @@ def matches_include_tags(tag: str, include_tags: Sequence[str] | None) -> bool:
     return not patterns or any(pattern.match(tag) for pattern in patterns)
 
 
+def is_valid_release_notes_url(value: object) -> bool:
+    return isinstance(value, str) and value.startswith(("http://", "https://"))
+
+
 def select_latest_manifest(
     image_name: str,
     include_tags: Sequence[str] | None,
@@ -88,6 +92,14 @@ def build_dashboard_snapshot(
         service = metadata.get("compose_service")
         current_tag = metadata.get("current_tag")
         current_digest = metadata.get("current_digest")
+        release_notes_url = metadata.get("release_notes_url")
+        raw_current_repo_digests = metadata.get("current_repo_digests")
+        current_repo_digests = (
+            [digest for digest in raw_current_repo_digests if isinstance(digest, str) and digest]
+            if isinstance(raw_current_repo_digests, Sequence)
+            and not isinstance(raw_current_repo_digests, (str, bytes))
+            else []
+        )
         full_image = entry.get("name")
         if not all(isinstance(value, str) and value for value in [project, service, current_tag, full_image]):
             continue
@@ -132,20 +144,24 @@ def build_dashboard_snapshot(
         if current_tag != latest_tag:
             update_type = "tag_bump"
             tag_bumps += 1
+        elif latest_digest in current_repo_digests:
+            continue
         elif isinstance(current_digest, str) and current_digest and current_digest != latest_digest:
             update_type = "digest_refresh"
             digest_refreshes += 1
         else:
             continue
 
-        grouped[project].append(
-            {
-                "service": service,
-                "update_type": update_type,
-                "current": current_tag,
-                "latest": latest_tag,
-            }
-        )
+        service_item = {
+            "service": service,
+            "update_type": update_type,
+            "current": current_tag,
+            "latest": latest_tag,
+        }
+        if is_valid_release_notes_url(release_notes_url):
+            service_item["release_notes_url"] = release_notes_url
+
+        grouped[project].append(service_item)
 
     projects = [
         {"name": project, "services": sorted(services, key=lambda item: item["service"])}

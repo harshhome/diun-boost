@@ -55,9 +55,27 @@ function updateRefreshStatus(value) {
 }
 
 function renderServiceRow(service) {
+  const serviceName = escapeHtml(service.service);
+  const releaseNotesLink = typeof service.release_notes_url === "string" && service.release_notes_url
+    ? `<a class="release-notes-icon-link" href="${escapeHtml(service.release_notes_url)}" target="_blank" rel="noopener noreferrer" title="Release notes" aria-label="Release notes for ${serviceName}">
+        <svg class="release-notes-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <path d="M14 2v6h6"/>
+          <path d="M16 13H8"/>
+          <path d="M16 17H8"/>
+          <path d="M10 9H8"/>
+        </svg>
+      </a>`
+    : "";
+
   return `
     <tr>
-      <td class="service-name">${escapeHtml(service.service)}</td>
+      <td class="service-name">
+        <div class="service-title-row">
+          <span class="service-title">${serviceName}</span>
+          ${releaseNotesLink}
+        </div>
+      </td>
       <td><span class="badge badge-${escapeHtml(service.update_type.replaceAll("_", "-"))}">${escapeHtml(service.update_type)}</span></td>
       <td><code>${escapeHtml(service.current)}</code></td>
       <td><code>${escapeHtml(service.latest)}</code></td>

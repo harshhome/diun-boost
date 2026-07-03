@@ -45,6 +45,7 @@ Recent changes added a proper dashboard-oriented workflow:
 - dashboard filtering now respects generated `include_tags` rules
 - dashboard downgrade protection skips latest tags that are numerically older than the current tag
 - preserved custom metadata on YAML regeneration
+- optional manually configured release-notes links in the dashboard
 - initial startup now creates the YAML file only if it does not already exist
 
 ## Features
@@ -93,8 +94,39 @@ You can add your own keys under `metadata` in generated DIUN entries. diun-boost
 
 - `current_tag`
 - `current_digest`
+- `current_repo_digests`
 - `compose_project`
 - `compose_service`
+
+Because `release_notes_url` is not auto-managed, it is treated as custom metadata and is preserved across config regeneration.
+
+### Manually configured release-notes links
+
+You can manually add `metadata.release_notes_url` to an entry in `/config/config.yml` to show a release-notes link for that service in the dashboard. The URL is preserved across config regeneration because it is custom metadata.
+
+The dashboard shows a `Release notes ↗` link only when `release_notes_url` is configured and starts with `http://` or `https://`. If `release_notes_url` is missing, invalid, or empty, no release-notes link, placeholder, disabled link, or extra text is displayed.
+
+This feature does not auto-discover changelogs or release notes, call the GitHub API, scrape websites, or substitute template variables. It is manually configured and static.
+
+Example:
+
+```yaml
+- name: redis:8.8.0
+  notify_on:
+    - new
+    - update
+  metadata:
+    current_tag: 8.8.0
+    current_digest: sha256:...
+    current_repo_digests:
+      - sha256:...
+    compose_project: paperless
+    compose_service: paperless-redis
+    release_notes_url: https://github.com/redis/redis/releases
+  watch_repo: true
+  include_tags:
+    - ^8\.8\..+$
+```
 
 ### Dashboard for pending updates
 
@@ -104,6 +136,7 @@ The dashboard snapshot groups updates by Compose project and shows:
 - update type (`tag_bump` or `digest_refresh`)
 - current tag
 - latest tag
+- optional `Release notes ↗` link when `metadata.release_notes_url` is configured
 - summary counts for projects, services, tag bumps, and digest refreshes
 
 Dashboard candidate selection follows the same generated `include_tags` rules used by DIUN. This prevents the dashboard from showing an update candidate that DIUN itself would not watch. It also skips numeric downgrades, so a registry-reported `4.0.0` latest tag will not be reported as pending when the running container is already on `4.0.1`.
@@ -265,8 +298,11 @@ providers:
   metadata:
     current_tag: 4.0.17
     current_digest: sha256:...
+    current_repo_digests:
+      - sha256:...
     compose_project: arr-stack
     compose_service: sonarr
+    release_notes_url: https://github.com/linuxserver/docker-sonarr/releases
     team: media
     severity: normal
   watch_repo: true
@@ -274,7 +310,7 @@ providers:
     - ^((?:5|[6-9]\d*)\.\d+\.\d+|4\.(?:1|[2-9]\d*)\.\d+|4.0\.(?:17|[1-9]\d*))$
 ```
 
-User-defined metadata like `team` and `severity` is preserved across future regenerations.
+User-defined metadata like `team`, `severity`, and `release_notes_url` is preserved across future regenerations.
 
 ## Dashboard API
 
@@ -291,7 +327,7 @@ User-defined metadata like `team` and `severity` is preserved across future rege
 - When `WATCHBYDEFAULT=true`, all running containers are included except explicit opt-outs.
 - The dashboard distinguishes between:
   - `tag_bump`: current tag differs from latest tag
-  - `digest_refresh`: tag is unchanged but image digest changed
+  - `digest_refresh`: tag is unchanged and DIUN's latest registry digest is not present in Docker's current repo digests
 - `dashboard.json` is only rewritten when content changes.
 - `config.yml` is only rewritten when content changes.
 - If `dashboard.json` already shows no pending services, the targeted refresh path returns that snapshot as-is.

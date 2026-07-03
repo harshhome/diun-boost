@@ -5,12 +5,13 @@ from docker.models.containers import Container
 from loguru import logger
 
 from app.dashboard_snapshot import canonical_image_name
-from app.docker_client import get_container_current_digest
+from app.docker_client import get_container_current_digest, get_container_repo_digests
 from app.regex_helper import build_tag_regex
 
 AUTO_METADATA_KEYS = {
     "current_tag",
     "current_digest",
+    "current_repo_digests",
     "compose_project",
     "compose_service",
 }
@@ -52,10 +53,13 @@ def create_diun_yaml(
                 continue
 
         image_name, tag = image.rsplit(":", 1)
+        current_repo_digests = get_container_repo_digests(container)
         current_digest = get_container_current_digest(container) or digest
         metadata = {"current_tag": tag}
         if current_digest:
             metadata["current_digest"] = current_digest
+        if current_repo_digests:
+            metadata["current_repo_digests"] = current_repo_digests
         entry = {"name": image, "notify_on": ["update"], "metadata": metadata}
 
         if "com.docker.compose.project" in container.labels and compose_track:
@@ -196,10 +200,11 @@ def enrich_missing_current_digests(
         for manifest in manifests:
             if manifest.get("tag") != current_tag:
                 continue
+            if metadata.get("current_digest"):
+                break
             digest = manifest.get("digest")
             if isinstance(digest, str) and digest:
-                if metadata.get("current_digest") != digest:
-                    metadata["current_digest"] = digest
+                metadata["current_digest"] = digest
                 break
     return entries
 
