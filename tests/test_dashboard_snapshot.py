@@ -116,7 +116,9 @@ def test_build_dashboard_snapshot_skips_digest_refresh_when_latest_is_in_repo_di
                     "compose_service": "paperless-redis",
                     "current_tag": "8.8.0",
                     "current_digest": "sha256:027002f3",
-                    "current_repo_digests": ["sha256:027002f3", "sha256:2838d552"],
+                    "current_repo_digests": (
+                        '["sha256:027002f3","sha256:2838d552"]'
+                    ),
                 },
             }
         ],
@@ -146,7 +148,7 @@ def test_build_dashboard_snapshot_reports_digest_refresh_when_latest_missing_fro
                     "compose_service": "paperless-redis",
                     "current_tag": "8.8.0",
                     "current_digest": "sha256:027002f3",
-                    "current_repo_digests": ["sha256:027002f3"],
+                    "current_repo_digests": '["sha256:027002f3"]',
                 },
             }
         ],

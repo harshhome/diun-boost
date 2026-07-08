@@ -10,6 +10,8 @@ from pathlib import Path
 
 import yaml
 
+from app.yaml_helper import parse_repo_digests
+
 
 def canonical_image_name(name: str) -> str:
     name = name.removeprefix("docker.io/")
@@ -93,12 +95,8 @@ def build_dashboard_snapshot(
         current_tag = metadata.get("current_tag")
         current_digest = metadata.get("current_digest")
         release_notes_url = metadata.get("release_notes_url")
-        raw_current_repo_digests = metadata.get("current_repo_digests")
-        current_repo_digests = (
-            [digest for digest in raw_current_repo_digests if isinstance(digest, str) and digest]
-            if isinstance(raw_current_repo_digests, Sequence)
-            and not isinstance(raw_current_repo_digests, (str, bytes))
-            else []
+        current_repo_digests = parse_repo_digests(
+            metadata.get("current_repo_digests")
         )
         full_image = entry.get("name")
         if not all(isinstance(value, str) and value for value in [project, service, current_tag, full_image]):
