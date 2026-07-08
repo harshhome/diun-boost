@@ -118,8 +118,7 @@ Example:
   metadata:
     current_tag: 8.8.0
     current_digest: sha256:...
-    current_repo_digests:
-      - sha256:...
+    current_repo_digests: '["sha256:..."]'
     compose_project: paperless
     compose_service: paperless-redis
     release_notes_url: https://github.com/redis/redis/releases
@@ -298,8 +297,7 @@ providers:
   metadata:
     current_tag: 4.0.17
     current_digest: sha256:...
-    current_repo_digests:
-      - sha256:...
+    current_repo_digests: '["sha256:..."]'
     compose_project: arr-stack
     compose_service: sonarr
     release_notes_url: https://github.com/linuxserver/docker-sonarr/releases

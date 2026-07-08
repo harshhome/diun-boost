@@ -1,10 +1,13 @@
 from types import SimpleNamespace
 
+import yaml
+
 from app.yaml_helper import (
     create_diun_yaml,
     create_empty_yaml,
     enrich_missing_current_digests,
     merge_custom_metadata,
+    parse_repo_digests,
 )
 
 
@@ -92,7 +95,7 @@ def test_create_diun_yaml_includes_current_digest_metadata():
 
     assert entries[0]["metadata"]["current_tag"] == "4.0.17"
     assert entries[0]["metadata"]["current_digest"] == "sha256:abcdef123456"
-    assert entries[0]["metadata"]["current_repo_digests"] == ["sha256:abcdef123456"]
+    assert entries[0]["metadata"]["current_repo_digests"] == '["sha256:abcdef123456"]'
     assert entries[0]["metadata"]["compose_project"] == "arr-stack"
     assert entries[0]["metadata"]["compose_service"] == "sonarr"
 
@@ -111,10 +114,54 @@ def test_create_diun_yaml_includes_all_current_repo_digests():
     entries = create_diun_yaml([container], m_all=True, compose_track=True)
 
     assert entries[0]["metadata"]["current_digest"] == "sha256:027002f3"
-    assert entries[0]["metadata"]["current_repo_digests"] == [
+    assert (
+        entries[0]["metadata"]["current_repo_digests"]
+        == '["sha256:027002f3","sha256:2838d552"]'
+    )
+
+
+def test_parse_repo_digests_parses_json_string():
+    assert parse_repo_digests('["sha256:027002f3","sha256:2838d552"]') == [
         "sha256:027002f3",
         "sha256:2838d552",
     ]
+
+
+def test_parse_repo_digests_filters_non_string_and_empty_items():
+    assert parse_repo_digests('["sha256:027002f3", "", null, 3]') == [
+        "sha256:027002f3",
+    ]
+
+
+def test_parse_repo_digests_returns_empty_for_missing_empty_invalid_or_non_list_json():
+    invalid_values = [
+        None,
+        "",
+        "   ",
+        "not json",
+        '{"digest":"sha256:027002f3"}',
+        '"sha256:027002f3"',
+        ["sha256:027002f3"],
+    ]
+
+    for value in invalid_values:
+        assert parse_repo_digests(value) == []
+
+
+def test_create_diun_yaml_keeps_notify_on_and_include_tags_as_yaml_lists():
+    container = make_container(
+        name="redis",
+        image_tag="redis:8.8.0",
+        repo_digests=["redis@sha256:027002f3"],
+    )
+
+    entries = create_diun_yaml([container], m_all=True, compose_track=True)
+    loaded = yaml.safe_load(yaml.safe_dump(entries))
+
+    assert loaded[0]["notify_on"] == ["new", "update"]
+    assert isinstance(loaded[0]["notify_on"], list)
+    assert isinstance(loaded[0]["include_tags"], list)
+    assert isinstance(loaded[0]["metadata"]["current_repo_digests"], str)
 
 
 def test_enrich_missing_current_digests_uses_matching_manifest_digest():

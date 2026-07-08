@@ -1,10 +1,10 @@
+import json
 from typing import Dict, List
 
 import yaml
 from docker.models.containers import Container
 from loguru import logger
 
-from app.dashboard_snapshot import canonical_image_name
 from app.docker_client import get_container_current_digest, get_container_repo_digests
 from app.regex_helper import build_tag_regex
 
@@ -15,6 +15,18 @@ AUTO_METADATA_KEYS = {
     "compose_project",
     "compose_service",
 }
+
+
+def parse_repo_digests(value) -> list[str]:
+    if not isinstance(value, str) or not value.strip():
+        return []
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [item for item in parsed if isinstance(item, str) and item]
 
 
 def create_diun_yaml(
@@ -59,7 +71,10 @@ def create_diun_yaml(
         if current_digest:
             metadata["current_digest"] = current_digest
         if current_repo_digests:
-            metadata["current_repo_digests"] = current_repo_digests
+            metadata["current_repo_digests"] = json.dumps(
+                current_repo_digests,
+                separators=(",", ":"),
+            )
         entry = {"name": image, "notify_on": ["update"], "metadata": metadata}
 
         if "com.docker.compose.project" in container.labels and compose_track:
@@ -185,6 +200,8 @@ def merge_custom_metadata(
 def enrich_missing_current_digests(
     entries: List[Dict], manifest_lookup: Dict[str, List[Dict]]
 ) -> List[Dict]:
+    from app.dashboard_snapshot import canonical_image_name
+
     for entry in entries:
         if not isinstance(entry, dict):
             continue
