@@ -174,6 +174,13 @@ def test_build_dashboard_snapshot_reports_digest_refresh_when_latest_missing_fro
                     "update_type": "digest_refresh",
                     "current": "8.8.0",
                     "latest": "8.8.0",
+                    "metadata": {
+                        "compose_project": "paperless",
+                        "compose_service": "paperless-redis",
+                        "current_tag": "8.8.0",
+                        "current_digest": "sha256:027002f3",
+                        "current_repo_digests": '["sha256:027002f3"]',
+                    },
                 }
             ],
         }

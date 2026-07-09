@@ -1,4 +1,104 @@
+import importlib
+
+import yaml
+
 from app import main
+
+
+def test_default_dashboard_commands_path_is_dedicated_dashboard_yml(monkeypatch):
+    monkeypatch.delenv("DIUN_DASHBOARD_COMMANDS_PATH", raising=False)
+
+    reloaded = importlib.reload(main)
+
+    assert reloaded.DEFAULT_DASHBOARD_COMMANDS_PATH == "/config/dashboard.yml"
+
+
+def test_dashboard_commands_path_env_override(monkeypatch):
+    monkeypatch.setenv("DIUN_DASHBOARD_COMMANDS_PATH", "/custom/dashboard.yml")
+
+    reloaded = importlib.reload(main)
+
+    assert reloaded.DEFAULT_DASHBOARD_COMMANDS_PATH == "/custom/dashboard.yml"
+    monkeypatch.delenv("DIUN_DASHBOARD_COMMANDS_PATH", raising=False)
+    importlib.reload(main)
+
+
+def test_generate_dashboard_snapshot_from_yaml_does_not_read_commands_from_diun_yaml_by_default(tmp_path, monkeypatch):
+    config_path = tmp_path / "config.yml"
+    dashboard_path = tmp_path / "dashboard.yml"
+    config_path.write_text(
+        yaml.safe_dump(
+            {
+                "dashboard": {
+                    "commands": [
+                        {
+                            "name": "wrong-place",
+                            "scope": "service",
+                            "label": "Wrong place",
+                            "template": "{service}",
+                        }
+                    ]
+                }
+            }
+        )
+    )
+    calls = []
+
+    monkeypatch.setattr(main, "DEFAULT_DASHBOARD_COMMANDS_PATH", str(dashboard_path))
+    monkeypatch.setattr(
+        main,
+        "build_snapshot_from_entries",
+        lambda entries, container_name, dashboard_commands: calls.append(dashboard_commands)
+        or {"commands": dashboard_commands},
+    )
+
+    snapshot = main.generate_dashboard_snapshot_from_yaml(str(config_path), "diun")
+
+    assert snapshot == {"commands": []}
+    assert calls == [[]]
+
+
+def test_generate_dashboard_snapshot_from_yaml_loads_commands_from_dashboard_yml(tmp_path, monkeypatch):
+    config_path = tmp_path / "config.yml"
+    dashboard_path = tmp_path / "dashboard.yml"
+    config_path.write_text("[]\n")
+    dashboard_path.write_text(
+        yaml.safe_dump(
+            {
+                "dashboard": {
+                    "commands": [
+                        {
+                            "name": "update-note",
+                            "scope": "service",
+                            "label": "Update note",
+                            "template": "{service}: {latest}",
+                        }
+                    ]
+                }
+            }
+        )
+    )
+
+    monkeypatch.setattr(main, "DEFAULT_DASHBOARD_COMMANDS_PATH", str(dashboard_path))
+    monkeypatch.setattr(
+        main,
+        "build_snapshot_from_entries",
+        lambda entries, container_name, dashboard_commands: {"commands": dashboard_commands},
+    )
+
+    snapshot = main.generate_dashboard_snapshot_from_yaml(str(config_path), "diun")
+
+    assert snapshot == {
+        "commands": [
+            {
+                "name": "update-note",
+                "scope": "service",
+                "label": "Update note",
+                "icon": "code",
+                "template": "{service}: {latest}",
+            }
+        ]
+    }
 
 
 def test_generate_dashboard_snapshot_from_yaml_uses_saved_config(monkeypatch):
@@ -31,7 +131,7 @@ def test_generate_dashboard_snapshot_from_yaml_uses_saved_config(monkeypatch):
     monkeypatch.setattr(
         main,
         "build_dashboard_snapshot",
-        lambda source_entries, latest, manifest_lookup=None: expected_snapshot,
+        lambda source_entries, latest, manifest_lookup=None, dashboard_commands=None: expected_snapshot,
     )
 
     def fail_if_called(*args, **kwargs):
@@ -104,7 +204,7 @@ def test_generate_targeted_dashboard_snapshot_filters_to_pending_services(monkey
     monkeypatch.setattr(
         main,
         "build_dashboard_snapshot",
-        lambda source_entries, latest, manifest_lookup=None: expected_snapshot,
+        lambda source_entries, latest, manifest_lookup=None, dashboard_commands=None: expected_snapshot,
     )
 
     snapshot = main.generate_targeted_dashboard_snapshot(

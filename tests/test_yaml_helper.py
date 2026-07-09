@@ -164,6 +164,19 @@ def test_create_diun_yaml_keeps_notify_on_and_include_tags_as_yaml_lists():
     assert isinstance(loaded[0]["metadata"]["current_repo_digests"], str)
 
 
+def test_create_diun_yaml_does_not_emit_dashboard_commands():
+    container = make_container(
+        name="redis",
+        image_tag="redis:8.8.0",
+        repo_digests=["redis@sha256:027002f3"],
+    )
+
+    dumped = yaml.safe_dump(create_diun_yaml([container], m_all=True, compose_track=True))  # type: ignore[arg-type]
+
+    assert "dashboard:" not in dumped
+    assert "commands:" not in dumped
+
+
 def test_enrich_missing_current_digests_uses_matching_manifest_digest():
     entries = [
         {

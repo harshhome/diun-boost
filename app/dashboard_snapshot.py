@@ -9,8 +9,104 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
+from loguru import logger
 
 from app.yaml_helper import parse_repo_digests
+
+
+VALID_COMMAND_ICONS = {
+    "code",
+    "copy",
+    "file-text",
+    "play",
+    "refresh",
+    "rocket",
+    "terminal",
+}
+
+
+def normalize_dashboard_commands(commands: object) -> list[dict[str, object]]:
+    if not isinstance(commands, Sequence) or isinstance(commands, (str, bytes)):
+        return []
+
+    normalized: list[dict[str, object]] = []
+    seen_names: set[str] = set()
+    for command in commands:
+        if not isinstance(command, Mapping):
+            continue
+
+        name = command.get("name")
+        scope = command.get("scope")
+        label = command.get("label")
+        if not all(isinstance(value, str) and value.strip() for value in [name, scope, label]):
+            continue
+        if not isinstance(name, str) or not isinstance(scope, str) or not isinstance(label, str):
+            continue
+        if name in seen_names or scope not in {"service", "project"}:
+            continue
+
+        item: dict[str, object] = {
+            "name": name,
+            "scope": scope,
+            "label": label,
+            "icon": command.get("icon") if command.get("icon") in VALID_COMMAND_ICONS else "code",
+        }
+
+        raw_update_types = command.get("update_types")
+        if isinstance(raw_update_types, Sequence) and not isinstance(raw_update_types, (str, bytes)):
+            update_types = [value for value in raw_update_types if isinstance(value, str) and value]
+            if update_types:
+                item["update_types"] = update_types
+
+        if scope == "service":
+            template = command.get("template")
+            if not isinstance(template, str) or not template:
+                continue
+            item["template"] = template
+        else:
+            item_template = command.get("item_template")
+            template = command.get("template")
+            if isinstance(item_template, str) and item_template:
+                item["item_template"] = item_template
+                item["join_with"] = command.get("join_with") if isinstance(command.get("join_with"), str) else " && "
+                item["prefix"] = command.get("prefix") if isinstance(command.get("prefix"), str) else ""
+                item["suffix"] = command.get("suffix") if isinstance(command.get("suffix"), str) else ""
+            elif isinstance(template, str) and template:
+                item["template"] = template
+            else:
+                continue
+
+        seen_names.add(name)
+        normalized.append(item)
+    return normalized
+
+
+def extract_dashboard_commands(config: object) -> list[dict[str, object]]:
+    if isinstance(config, Mapping):
+        dashboard = config.get("dashboard")
+        if isinstance(dashboard, Mapping):
+            return normalize_dashboard_commands(dashboard.get("commands"))
+        return []
+
+    if isinstance(config, Sequence) and not isinstance(config, (str, bytes)):
+        for item in config:
+            if not isinstance(item, Mapping):
+                continue
+            dashboard = item.get("dashboard")
+            if isinstance(dashboard, Mapping):
+                return normalize_dashboard_commands(dashboard.get("commands"))
+    return []
+
+
+def load_dashboard_commands_from_yaml(file_path: str | Path) -> list[dict[str, object]]:
+    path = Path(file_path)
+    if not path.exists():
+        return []
+    try:
+        return extract_dashboard_commands(yaml.safe_load(path.read_text()) or {})
+    except yaml.YAMLError as exc:
+        logger.warning(f"Unable to parse dashboard command config {path}: {exc}")
+        return []
 
 
 def canonical_image_name(name: str) -> str:
@@ -79,9 +175,10 @@ def build_dashboard_snapshot(
     config_entries: Sequence[Mapping[str, object]],
     latest_by_image: Mapping[str, Mapping[str, object]],
     manifest_lookup: Mapping[str, Sequence[Mapping[str, object]]] | None = None,
+    dashboard_commands: Sequence[Mapping[str, object]] | None = None,
     generated_at: datetime | None = None,
 ) -> dict[str, object]:
-    grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
+    grouped: dict[str, list[dict[str, object]]] = defaultdict(list)
     tag_bumps = 0
     digest_refreshes = 0
 
@@ -155,6 +252,7 @@ def build_dashboard_snapshot(
             "update_type": update_type,
             "current": current_tag,
             "latest": latest_tag,
+            "metadata": dict(metadata),
         }
         if is_valid_release_notes_url(release_notes_url):
             service_item["release_notes_url"] = release_notes_url
@@ -162,7 +260,7 @@ def build_dashboard_snapshot(
         grouped[project].append(service_item)
 
     projects = [
-        {"name": project, "services": sorted(services, key=lambda item: item["service"])}
+        {"name": project, "services": sorted(services, key=lambda item: str(item["service"]))}
         for project, services in sorted(grouped.items())
     ]
     service_count = sum(len(project["services"]) for project in projects)
@@ -175,6 +273,7 @@ def build_dashboard_snapshot(
 
     return {
         "generated_at": (generated_at or datetime.now(timezone.utc)).isoformat(),
+        "commands": normalize_dashboard_commands(dashboard_commands),
         "projects": projects,
         "summary": summary,
     }
