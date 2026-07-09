@@ -46,6 +46,7 @@ Recent changes added a proper dashboard-oriented workflow:
 - dashboard downgrade protection skips latest tags that are numerically older than the current tag
 - preserved custom metadata on YAML regeneration
 - optional manually configured release-notes links in the dashboard
+- configurable Custom Action Buttons that copy rendered dashboard commands/text
 - initial startup now creates the YAML file only if it does not already exist
 
 ## Features
@@ -127,6 +128,117 @@ Example:
     - ^8\.8\..+$
 ```
 
+### Custom Action Buttons
+
+Custom Action Buttons let you define copyable dashboard actions using update details and metadata. This makes diun-boost workflow-aware without making it workflow-specific. You can copy commands for Docker Compose, GitOps, Kubernetes, Ansible, custom scripts, commit messages, release notes, or any other workflow.
+
+Custom Action Buttons are configured separately from DIUN's file-provider config. By default, diun-boost reads action button configuration from:
+
+```text
+/config/dashboard.yml
+```
+
+This file should contain a `dashboard.commands` section. Do not put `dashboard.commands` in `/config/config.yml`, because `config.yml` is generated for DIUN's file provider and should remain DIUN-compatible. If `/config/dashboard.yml` is missing or empty, no custom action buttons are shown. Override the path with `DIUN_DASHBOARD_COMMANDS_PATH` if needed.
+
+Safety note: diun-boost only renders commands/text and copies the raw result to your clipboard. It does not execute commands, shell-escape values, quote values, or modify command text beyond placeholder replacement.
+
+Supported scopes:
+
+- `service`: renders one copy button per matching service row, beside the release-notes button. Requires `template`.
+- `project`: renders one copy button near the project/card header. Use either:
+  - `item_template` to render one fragment per matching service and join them with `join_with`, then wrap with optional `prefix` and `suffix`.
+  - `template` to render one project-level command. For project-level `template`, only `{project}` is available.
+
+Available icon names are `code`, `copy`, `file-text`, `play`, `refresh`, `rocket`, and `terminal`. Invalid or missing icons fall back to `code`.
+
+`update_types` is a filter, not a scope. If omitted, the command applies to all update types. If set, only matching services are included. This is useful because `tag_bump` and `digest_refresh` often need different workflows: a `tag_bump` usually requires updating the declared image tag first, while a plain `docker compose pull` is usually only appropriate for `digest_refresh` where the tag is unchanged.
+
+Supported built-in placeholders for service commands and project `item_template` commands:
+
+- `{service}`
+- `{current}`
+- `{latest}`
+- `{update_type}`
+- `{release_notes_url}`
+- `{project}`
+
+All metadata keys are also available to service commands and project `item_template` commands, for example:
+
+- `{compose_project}`
+- `{compose_service}`
+- `{image_repo}`
+- `{current_tag}`
+- `{current_digest}`
+- `{current_repo_digests}`
+
+If a placeholder is missing, the related button is disabled and its tooltip explains what is missing, for example `Missing placeholder: compose_service`. For project `item_template` commands, a service with missing placeholders is skipped and logged so the remaining services can still produce a copyable command.
+
+Example `/config/dashboard.yml`:
+
+```yaml
+dashboard:
+  commands:
+    # Simple service-level workflow: copy an update note
+    - name: update-note
+      scope: service
+      label: Update note
+      icon: file-text
+      template: "{service}: {current} → {latest} ({update_type})"
+
+    # Advanced service-level workflow: refresh an unchanged tag/digest
+    - name: refresh-digest
+      scope: service
+      label: Refresh digest
+      icon: refresh
+      update_types:
+        - digest_refresh
+      template: "docker compose -p {compose_project} pull {compose_service} && docker compose -p {compose_project} up -d {compose_service}"
+
+    # Simple project-level workflow: copy one summary for all matching services
+    - name: project-summary
+      scope: project
+      label: Project summary
+      icon: file-text
+      item_template: "{service}: {current} → {latest}"
+      join_with: ", "
+
+    # Project-level workflow: copy one command for the matching project
+    - name: refresh-project
+      scope: project
+      label: Refresh project
+      icon: rocket
+      update_types:
+        - digest_refresh
+      template: "hc update {project}"
+
+    # Advanced project-level workflow: bump all tag updates, then recreate the compose project
+    - name: bump-all-tags
+      scope: project
+      label: Bump all tags
+      icon: rocket
+      update_types:
+        - tag_bump
+      item_template: "yq -i '.services.{compose_service}.image = \"{image_repo}:{latest}\"' docker-compose.yml"
+      join_with: " && "
+      suffix: " && docker compose -p {compose_project} up -d"
+```
+
+Digest refresh project workflow using one command fragment per matching service:
+
+```yaml
+dashboard:
+  commands:
+    - name: refresh-all-digests
+      scope: project
+      label: Refresh all digests
+      icon: refresh
+      update_types:
+        - digest_refresh
+      item_template: "docker compose -p {compose_project} pull {compose_service}"
+      join_with: " && "
+      suffix: " && docker compose -p {compose_project} up -d"
+```
+
 ### Dashboard for pending updates
 
 The dashboard snapshot groups updates by Compose project and shows:
@@ -136,6 +248,8 @@ The dashboard snapshot groups updates by Compose project and shows:
 - current tag
 - latest tag
 - optional `Release notes ↗` link when `metadata.release_notes_url` is configured
+- optional Custom Action Buttons from `dashboard.commands`
+- service metadata under each service's nested `metadata` object
 - summary counts for projects, services, tag bumps, and digest refreshes
 
 Dashboard candidate selection follows the same generated `include_tags` rules used by DIUN. This prevents the dashboard from showing an update candidate that DIUN itself would not watch. It also skips numeric downgrades, so a registry-reported `4.0.0` latest tag will not be reported as pending when the running container is already on `4.0.1`.
@@ -196,6 +310,7 @@ If Compose metadata is disabled, diun-boost can still generate `config.yml`, but
 |---|---|---|
 | `DIUN_YAML_PATH` | Path to the generated DIUN file-provider YAML. | `/config/config.yml` |
 | `DIUN_DASHBOARD_JSON_PATH` | Path to the generated dashboard snapshot JSON. | `/config/dashboard.json` |
+| `DIUN_DASHBOARD_COMMANDS_PATH` | Path to `dashboard.yml` containing `dashboard.commands` for Custom Action Buttons. | `/config/dashboard.yml` |
 | `CRON_SCHEDULE` | Cron expression for regenerating `config.yml`. | `0 */6 * * *` |
 | `DIUN_DASHBOARD_CRON_SCHEDULE` | Cron expression for regenerating `dashboard.json`. | `7 */6 * * *` |
 | `LOG_LEVEL` | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`. | `INFO` |
@@ -214,6 +329,7 @@ docker run -d \
   -p 8000:8000 \
   -e DIUN_YAML_PATH="/config/config.yml" \
   -e DIUN_DASHBOARD_JSON_PATH="/config/dashboard.json" \
+  -e DIUN_DASHBOARD_COMMANDS_PATH="/config/dashboard.yml" \
   -e CRON_SCHEDULE="0 */6 * * *" \
   -e DIUN_DASHBOARD_CRON_SCHEDULE="7 */6 * * *" \
   -e LOG_LEVEL="INFO" \
@@ -259,6 +375,7 @@ services:
     environment:
       - DIUN_YAML_PATH=/config/config.yml
       - DIUN_DASHBOARD_JSON_PATH=/config/dashboard.json
+      - DIUN_DASHBOARD_COMMANDS_PATH=/config/dashboard.yml
       - CRON_SCHEDULE=0 */6 * * *
       - DIUN_DASHBOARD_CRON_SCHEDULE=7 */6 * * *
       - LOG_LEVEL=INFO
@@ -313,7 +430,7 @@ User-defined metadata like `team`, `severity`, and `release_notes_url` is preser
 ## Dashboard API
 
 - `GET /` - HTML dashboard
-- `GET /api/report` - return the current `dashboard.json`
+- `GET /api/report` - return the current `dashboard.json`, including top-level `commands` and nested service `metadata`
 - `POST /api/report/refresh` - perform a targeted live refresh and return the refreshed snapshot
 - `POST /api/report/hard-refresh` - perform a full live refresh, update `config.yml` if needed, and return the refreshed snapshot
 - `GET /healthz` - simple health endpoint
@@ -331,6 +448,7 @@ User-defined metadata like `team`, `severity`, and `release_notes_url` is preser
 - If `dashboard.json` already shows no pending services, the targeted refresh path returns that snapshot as-is.
 - The dashboard ignores latest tags that do not match an entry's `include_tags` rules.
 - The dashboard ignores numeric downgrades when both the current and latest tags contain version numbers.
+- Custom Action Buttons copy rendered raw text to the clipboard only; diun-boost never executes configured commands.
 - Use hard refresh when you want to rescan all eligible containers instead of only refreshing services already shown as pending.
 
 ## Local development

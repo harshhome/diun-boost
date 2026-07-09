@@ -10,6 +10,7 @@ from app.dashboard_snapshot import (
     build_dashboard_snapshot,
     canonical_image_name,
     extract_pending_service_scope,
+    load_dashboard_commands_from_yaml,
     load_dashboard_json,
     write_dashboard_json,
 )
@@ -33,6 +34,7 @@ DEFAULT_MONITOR_ALL = os.getenv("WATCHBYDEFAULT", "false").lower() == "true"
 DEFAULT_COMPOSE_TRACK = os.getenv("DOCKER_COMPOSE_METADATA", "false").lower() == "true"
 DEFAULT_OUTPUT_PATH = os.getenv("DIUN_YAML_PATH", "/config/config.yml")
 DEFAULT_DASHBOARD_JSON_PATH = os.getenv("DIUN_DASHBOARD_JSON_PATH", "/config/dashboard.json")
+DEFAULT_DASHBOARD_COMMANDS_PATH = os.getenv("DIUN_DASHBOARD_COMMANDS_PATH", "/config/dashboard.yml")
 DEFAULT_DIUN_CONTAINER_NAME = os.getenv("DIUN_CONTAINER_NAME", "diun")
 DEFAULT_DASHBOARD_CRON_SCHEDULE = os.getenv("DIUN_DASHBOARD_CRON_SCHEDULE", "7 */6 * * *")
 
@@ -74,6 +76,7 @@ def build_manifest_lookup(
 def build_snapshot_from_entries(
     entries: list[dict],
     diun_container_name: str,
+    dashboard_commands: list[dict] | None = None,
 ) -> dict[str, object]:
     client = get_docker_client()
     latest_by_image = load_diun_latest(client, diun_container_name)
@@ -88,6 +91,7 @@ def build_snapshot_from_entries(
         entries,
         latest_by_image,
         manifest_lookup=manifest_lookup,
+        dashboard_commands=dashboard_commands,
     )
 
 
@@ -124,14 +128,22 @@ def generate_dashboard_snapshot(
     if persist_yaml and compare_yaml_files(output_path, diun_entries):
         write_yaml_to_file(diun_entries, output_path)
 
-    return build_snapshot_from_entries(diun_entries, diun_container_name)
+    return build_snapshot_from_entries(
+        diun_entries,
+        diun_container_name,
+        load_dashboard_commands_from_yaml(DEFAULT_DASHBOARD_COMMANDS_PATH),
+    )
 
 
 def generate_dashboard_snapshot_from_yaml(
     output_path: str,
     diun_container_name: str,
 ) -> dict[str, object]:
-    return build_snapshot_from_entries(load_yaml_entries(output_path), diun_container_name)
+    return build_snapshot_from_entries(
+        load_yaml_entries(output_path),
+        diun_container_name,
+        load_dashboard_commands_from_yaml(DEFAULT_DASHBOARD_COMMANDS_PATH),
+    )
 
 
 def generate_targeted_dashboard_snapshot(
@@ -160,7 +172,11 @@ def generate_targeted_dashboard_snapshot(
     scoped_existing_entries = filter_entries_for_scope(existing_entries, scope)
     diun_entries = create_diun_yaml(containers, True, compose_track)
     diun_entries = merge_custom_metadata(diun_entries, scoped_existing_entries)
-    return build_snapshot_from_entries(diun_entries, diun_container_name)
+    return build_snapshot_from_entries(
+        diun_entries,
+        diun_container_name,
+        load_dashboard_commands_from_yaml(DEFAULT_DASHBOARD_COMMANDS_PATH),
+    )
 
 
 def run_tasks(

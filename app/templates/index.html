@@ -144,5 +144,8 @@
 {% endif %}
 </div>
 
+<script>
+  window.__DIUN_DASHBOARD__ = {% if dashboard %}{{ dashboard | tojson }}{% else %}null{% endif %};
+</script>
 <script src="/static/app.js" defer></script>
 {% endblock %}

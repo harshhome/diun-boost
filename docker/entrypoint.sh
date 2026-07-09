@@ -9,6 +9,7 @@ export DASHBOARD_CRON_SANTIZED=$(echo "${DIUN_DASHBOARD_CRON_SCHEDULE:-7 */6 * *
 {
     echo "export DIUN_YAML_PATH=\"${DIUN_YAML_PATH:-/config/config.yml}\""
     echo "export DIUN_DASHBOARD_JSON_PATH=\"${DIUN_DASHBOARD_JSON_PATH:-/config/dashboard.json}\""
+    echo "export DIUN_DASHBOARD_COMMANDS_PATH=\"${DIUN_DASHBOARD_COMMANDS_PATH:-/config/dashboard.yml}\""
     echo "export DIUN_DASHBOARD_CRON_SCHEDULE=\"${DIUN_DASHBOARD_CRON_SCHEDULE:-7 */6 * * *}\""
     echo "export DIUN_CONTAINER_NAME=\"${DIUN_CONTAINER_NAME:-diun}\""
     echo "export LOG_LEVEL=\"${LOG_LEVEL:-INFO}\""

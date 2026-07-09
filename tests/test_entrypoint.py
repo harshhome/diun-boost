@@ -15,3 +15,10 @@ def test_container_startup_generates_config_before_dashboard_snapshot():
     assert first_run_config in startup_section
     assert dashboard_refresh in startup_section
     assert startup_section.index(first_run_config) < startup_section.index(dashboard_refresh)
+
+
+def test_entrypoint_defaults_dashboard_commands_path_to_dashboard_yml():
+    script = ENTRYPOINT.read_text()
+
+    assert 'echo "export DIUN_DASHBOARD_COMMANDS_PATH=\\"${DIUN_DASHBOARD_COMMANDS_PATH:-/config/dashboard.yml}\\""' in script
+    assert 'DIUN_DASHBOARD_COMMANDS_PATH=\"${DIUN_DASHBOARD_COMMANDS_PATH:-${DIUN_YAML_PATH' not in script
