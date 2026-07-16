@@ -44,7 +44,9 @@ Recent changes added a proper dashboard-oriented workflow:
 - hard refresh API endpoint at `POST /api/report/hard-refresh`
 - dashboard filtering now respects generated `include_tags` rules
 - dashboard downgrade protection skips latest tags that are numerically older than the current tag
-- preserved custom metadata on YAML regeneration
+- repository-aware custom metadata preservation across Compose tag changes, with ambiguity safeguards
+- tagged `Config.Image` fallback when Docker has no `RepoTags`, while skipping raw image IDs
+- strict repository matching for running-image digests, with explicit `current_digest_unavailable` metadata when Docker cannot prove one
 - optional manually configured release-notes links in the dashboard
 - configurable Custom Action Buttons that copy rendered dashboard commands/text
 - initial startup now creates the YAML file only if it does not already exist
@@ -95,11 +97,12 @@ You can add your own keys under `metadata` in generated DIUN entries. diun-boost
 
 - `current_tag`
 - `current_digest`
+- `current_digest_unavailable`
 - `current_repo_digests`
 - `compose_project`
 - `compose_service`
 
-Because `release_notes_url` is not auto-managed, it is treated as custom metadata and is preserved across config regeneration.
+Because `release_notes_url` is not auto-managed, it is treated as custom metadata and is preserved across config regeneration. Compose-managed entries are matched by `compose_project`, `compose_service`, and image repository, so custom metadata survives tag changes and remains isolated between services without carrying image-specific links across repository changes. Entries without Compose metadata retain exact image-name matching, with repository-only migration fallback only when the legacy metadata is unambiguous and exactly one generated Compose service uses that repository.
 
 ### Manually configured release-notes links
 
@@ -112,7 +115,7 @@ This feature does not auto-discover changelogs or release notes, call the GitHub
 Example:
 
 ```yaml
-- name: redis:8.8.0
+- name: registry.example.test/sample/cache:8.8.0
   notify_on:
     - new
     - update
@@ -120,9 +123,9 @@ Example:
     current_tag: 8.8.0
     current_digest: sha256:...
     current_repo_digests: '["sha256:..."]'
-    compose_project: paperless
-    compose_service: paperless-redis
-    release_notes_url: https://github.com/redis/redis/releases
+    compose_project: sample-stack
+    compose_service: sample-cache
+    release_notes_url: https://releases.example.test/cache
   watch_repo: true
   include_tags:
     - ^8\.8\..+$
@@ -407,7 +410,7 @@ providers:
 ## Example generated entry
 
 ```yaml
-- name: linuxserver/sonarr:4.0.17
+- name: registry.example.test/sample/service-gamma:4.0.17
   notify_on:
     - new
     - update
@@ -415,17 +418,17 @@ providers:
     current_tag: 4.0.17
     current_digest: sha256:...
     current_repo_digests: '["sha256:..."]'
-    compose_project: arr-stack
-    compose_service: sonarr
-    release_notes_url: https://github.com/linuxserver/docker-sonarr/releases
-    team: media
+    compose_project: sample-stack
+    compose_service: service-gamma
+    release_notes_url: https://releases.example.test/service-gamma
+    team: platform
     severity: normal
   watch_repo: true
   include_tags:
     - ^((?:5|[6-9]\d*)\.\d+\.\d+|4\.(?:1|[2-9]\d*)\.\d+|4.0\.(?:17|[1-9]\d*))$
 ```
 
-User-defined metadata like `team`, `severity`, and `release_notes_url` is preserved across future regenerations.
+User-defined metadata like `team`, `severity`, and `release_notes_url` is preserved across future regenerations. Compose services are matched by project, service, and image repository; legacy entries can also migrate across a tag change when their repository metadata is unambiguous and exactly one generated Compose service uses that repository.
 
 ## Dashboard API
 
@@ -440,6 +443,8 @@ User-defined metadata like `team`, `severity`, and `release_notes_url` is preser
 - Containers with `diun.enable=false` are always excluded.
 - When `WATCHBYDEFAULT=false`, only containers with `diun.enable=true` are included.
 - When `WATCHBYDEFAULT=true`, all running containers are included except explicit opt-outs.
+- If Docker reports no `RepoTags` for a running image, diun-boost falls back to the container's original `Config.Image` when it contains an explicit tag.
+- Registry digests are filtered to that configured repository. If Docker cannot provide a matching digest, the entry is marked `current_digest_unavailable` and registry data is not substituted as the running digest.
 - The dashboard distinguishes between:
   - `tag_bump`: current tag differs from latest tag
   - `digest_refresh`: tag is unchanged and DIUN's latest registry digest is not present in Docker's current repo digests

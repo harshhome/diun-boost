@@ -9,7 +9,7 @@ def test_api_report_reads_dashboard_snapshot(tmp_path, monkeypatch):
     snapshot_path = tmp_path / "dashboard.json"
     snapshot = {
         "generated_at": "2026-06-10T17:00:00+00:00",
-        "projects": [{"name": "arr-stack", "services": []}],
+        "projects": [{"name": "sample-stack", "services": []}],
         "summary": {
             "projects": 1,
             "services": 0,
@@ -30,7 +30,7 @@ def test_api_report_reads_dashboard_snapshot(tmp_path, monkeypatch):
 def test_api_report_refresh_generates_live_snapshot(monkeypatch):
     snapshot = {
         "generated_at": "2026-06-10T17:05:00+00:00",
-        "projects": [{"name": "arr-stack", "services": []}],
+        "projects": [{"name": "sample-stack", "services": []}],
         "summary": {
             "projects": 1,
             "services": 0,
@@ -51,7 +51,7 @@ def test_api_report_refresh_generates_live_snapshot(monkeypatch):
 def test_api_report_hard_refresh_generates_live_snapshot(monkeypatch):
     snapshot = {
         "generated_at": "2026-06-10T17:10:00+00:00",
-        "projects": [{"name": "arr-stack", "services": []}],
+        "projects": [{"name": "sample-stack", "services": []}],
         "summary": {
             "projects": 1,
             "services": 0,

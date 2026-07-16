@@ -89,17 +89,27 @@ def canonical_repo_name(name: str) -> str:
     return name
 
 
-def get_container_repo_digests(container: Container) -> list[str]:
+def get_container_repo_digests(
+    container: Container, image_name: str | None = None
+) -> list[str]:
     """Return all registry manifest/index digests Docker has for an image.
 
     Docker image IDs are local config digests and are intentionally not used here.
     RepoDigests are registry digests in the same sha256:<hex> form reported by DIUN.
     """
+    image = container.image
+    if image is None:
+        return []
+
+    strict_image_match = bool(image_name)
     image_names = []
-    for image_tag in container.image.tags or []:
-        if ":" not in image_tag:
-            continue
-        image_names.append(canonical_repo_name(image_tag.rsplit(":", 1)[0]))
+    if image_name:
+        image_names.append(canonical_repo_name(image_name))
+    else:
+        for image_tag in image.tags or []:
+            if ":" not in image_tag:
+                continue
+            image_names.append(canonical_repo_name(image_tag.rsplit(":", 1)[0]))
     image_name_set = set(image_names)
 
     matching_digests: list[str] = []
@@ -107,7 +117,7 @@ def get_container_repo_digests(container: Container) -> list[str]:
     seen_matching: set[str] = set()
     seen_fallback: set[str] = set()
 
-    for repo_digest in container.image.attrs.get("RepoDigests", []) or []:
+    for repo_digest in image.attrs.get("RepoDigests", []) or []:
         if not isinstance(repo_digest, str) or "@" not in repo_digest:
             continue
         repo_name, digest = repo_digest.split("@", 1)
@@ -118,7 +128,7 @@ def get_container_repo_digests(container: Container) -> list[str]:
             if digest not in seen_matching:
                 matching_digests.append(digest)
                 seen_matching.add(digest)
-        elif digest not in seen_fallback:
+        elif not strict_image_match and digest not in seen_fallback:
             fallback_digests.append(digest)
             seen_fallback.add(digest)
 
@@ -127,6 +137,8 @@ def get_container_repo_digests(container: Container) -> list[str]:
     return fallback_digests
 
 
-def get_container_current_digest(container: Container) -> str | None:
-    repo_digests = get_container_repo_digests(container)
+def get_container_current_digest(
+    container: Container, image_name: str | None = None
+) -> str | None:
+    repo_digests = get_container_repo_digests(container, image_name)
     return repo_digests[0] if repo_digests else None
