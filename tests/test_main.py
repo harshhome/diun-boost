@@ -104,20 +104,20 @@ def test_generate_dashboard_snapshot_from_yaml_loads_commands_from_dashboard_yml
 def test_generate_dashboard_snapshot_from_yaml_uses_saved_config(monkeypatch):
     entries = [
         {
-            "name": "linuxserver/sonarr:4.0.17",
+            "name": "registry.example.test/sample/service-gamma:4.0.17",
             "metadata": {
-                "compose_project": "arr-stack",
-                "compose_service": "sonarr",
+                "compose_project": "sample-stack",
+                "compose_service": "service-gamma",
                 "current_tag": "4.0.17",
             },
         }
     ]
     latest_by_image = {
-        "linuxserver/sonarr": {
+        "registry.example.test/sample/service-gamma": {
             "latest": {"tag": "4.0.18", "digest": "sha256:new"}
         }
     }
-    manifest_lookup = {"linuxserver/sonarr": [{"tag": "4.0.18", "digest": "sha256:new"}]}
+    manifest_lookup = {"registry.example.test/sample/service-gamma": [{"tag": "4.0.18", "digest": "sha256:new"}]}
     expected_snapshot = {"generated_at": "2026-06-11T00:00:00+00:00", "projects": [], "summary": {}}
 
     monkeypatch.setattr(main, "load_yaml_entries", lambda path: entries)
@@ -147,18 +147,18 @@ def test_generate_dashboard_snapshot_from_yaml_uses_saved_config(monkeypatch):
 def test_generate_targeted_dashboard_snapshot_filters_to_pending_services(monkeypatch):
     existing_entries = [
         {
-            "name": "linuxserver/sonarr:4.0.17",
+            "name": "registry.example.test/sample/service-gamma:4.0.17",
             "metadata": {
-                "compose_project": "arr-stack",
-                "compose_service": "sonarr",
+                "compose_project": "sample-stack",
+                "compose_service": "service-gamma",
                 "current_tag": "4.0.17",
             },
         },
         {
-            "name": "linuxserver/radarr:6.1.1",
+            "name": "registry.example.test/sample/service-beta:6.1.1",
             "metadata": {
-                "compose_project": "arr-stack",
-                "compose_service": "radarr",
+                "compose_project": "sample-stack",
+                "compose_service": "service-beta",
                 "current_tag": "6.1.1",
             },
         },
@@ -166,19 +166,19 @@ def test_generate_targeted_dashboard_snapshot_filters_to_pending_services(monkey
     dashboard_snapshot = {
         "projects": [
             {
-                "name": "arr-stack",
+                "name": "sample-stack",
                 "services": [
-                    {"service": "sonarr", "current": "4.0.17", "latest": "4.0.18"}
+                    {"service": "service-gamma", "current": "4.0.17", "latest": "4.0.18"}
                 ],
             }
         ]
     }
     live_entries = [
         {
-            "name": "linuxserver/sonarr:4.0.18",
+            "name": "registry.example.test/sample/service-gamma:4.0.18",
             "metadata": {
-                "compose_project": "arr-stack",
-                "compose_service": "sonarr",
+                "compose_project": "sample-stack",
+                "compose_service": "service-gamma",
                 "current_tag": "4.0.18",
             },
         }
@@ -191,7 +191,7 @@ def test_generate_targeted_dashboard_snapshot_filters_to_pending_services(monkey
     monkeypatch.setattr(
         main,
         "get_containers_for_compose_services",
-        lambda client, scope: ["sonarr-container"],
+        lambda client, scope: ["service-gamma-container"],
     )
     monkeypatch.setattr(
         main,

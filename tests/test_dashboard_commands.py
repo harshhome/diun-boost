@@ -99,19 +99,19 @@ def test_build_dashboard_snapshot_includes_metadata_and_configured_commands():
     snapshot = build_dashboard_snapshot(
         [
             {
-                "name": "linuxserver/sonarr:4.0.17",
+                "name": "registry.example.test/sample/service-gamma:4.0.17",
                 "metadata": {
-                    "compose_project": "arr-stack",
-                    "compose_service": "sonarr",
-                    "image_repo": "linuxserver/sonarr",
+                    "compose_project": "sample-stack",
+                    "compose_service": "service-gamma",
+                    "image_repo": "registry.example.test/sample/service-gamma",
                     "current_tag": "4.0.17",
                     "current_digest": "sha256:old",
-                    "release_notes_url": "https://github.com/linuxserver/docker-sonarr/releases",
+                    "release_notes_url": "https://releases.example.test/service-gamma",
                 },
             }
         ],
         {
-            "linuxserver/sonarr": {
+            "registry.example.test/sample/service-gamma": {
                 "latest": {"tag": "4.0.18", "digest": "sha256:new"}
             }
         },
@@ -137,14 +137,14 @@ def test_build_dashboard_snapshot_includes_metadata_and_configured_commands():
     ]
     service = snapshot["projects"][0]["services"][0]
     assert service["metadata"] == {
-        "compose_project": "arr-stack",
-        "compose_service": "sonarr",
-        "image_repo": "linuxserver/sonarr",
+        "compose_project": "sample-stack",
+        "compose_service": "service-gamma",
+        "image_repo": "registry.example.test/sample/service-gamma",
         "current_tag": "4.0.17",
         "current_digest": "sha256:old",
-        "release_notes_url": "https://github.com/linuxserver/docker-sonarr/releases",
+        "release_notes_url": "https://releases.example.test/service-gamma",
     }
-    assert service["release_notes_url"] == "https://github.com/linuxserver/docker-sonarr/releases"
+    assert service["release_notes_url"] == "https://releases.example.test/service-gamma"
 
 
 def run_app_js(js_expression: str):
@@ -191,16 +191,16 @@ def test_dashboard_template_rendering_replaces_raw_values_and_reports_missing_pl
         (() => {
           const rendered = renderCommandTemplate(
             'docker compose -p {compose_project} pull {compose_service} && echo "{latest}"',
-            { compose_project: 'arr stack', compose_service: 'sonarr;rm -rf /', latest: '4.0.18' }
+            { compose_project: 'sample stack', compose_service: 'service-gamma;rm -rf /', latest: '4.0.18' }
           );
-          const missing = renderCommandTemplate('pull {compose_project} {missing_one} {missing_two}', { compose_project: 'arr-stack' });
+          const missing = renderCommandTemplate('pull {compose_project} {missing_one} {missing_two}', { compose_project: 'sample-stack' });
           return { rendered, missing };
         })()
         """
     )
 
     assert result["rendered"] == {
-        "text": 'docker compose -p arr stack pull sonarr;rm -rf / && echo "4.0.18"',
+        "text": 'docker compose -p sample stack pull service-gamma;rm -rf / && echo "4.0.18"',
         "missing": [],
     }
     assert result["missing"] == {
@@ -220,11 +220,11 @@ def test_dashboard_service_and_project_commands_render_with_update_type_filters(
             { name: 'refresh-all', scope: 'project', label: 'Refresh all', icon: 'nope', update_types: ['digest_refresh'], item_template: 'pull {compose_service}', join_with: ' && ', suffix: ' && up {compose_project}' },
           ];
           const project = {
-            name: 'arr-stack',
+            name: 'sample-stack',
             services: [
-              { service: 'bazarr', update_type: 'tag_bump', current: '1.5.0', latest: '1.6.0', metadata: { compose_project: 'arr-stack', compose_service: 'bazarr' } },
-              { service: 'sonarr', update_type: 'tag_bump', current: '4.0.18', latest: '4.0.19', metadata: { compose_project: 'arr-stack', compose_service: 'sonarr' } },
-              { service: 'qbittorrent', update_type: 'digest_refresh', current: '5.2.3', latest: '5.2.3', metadata: { compose_project: 'arr-stack', compose_service: 'qbittorrent' } },
+              { service: 'service-alpha', update_type: 'tag_bump', current: '1.5.0', latest: '1.6.0', metadata: { compose_project: 'sample-stack', compose_service: 'service-alpha' } },
+              { service: 'service-gamma', update_type: 'tag_bump', current: '4.0.18', latest: '4.0.19', metadata: { compose_project: 'sample-stack', compose_service: 'service-gamma' } },
+              { service: 'service-epsilon', update_type: 'digest_refresh', current: '5.2.3', latest: '5.2.3', metadata: { compose_project: 'sample-stack', compose_service: 'service-epsilon' } },
             ],
           };
           const serviceButtons = renderServiceCommandButtons(project.services[0], project, commands);
@@ -237,14 +237,14 @@ def test_dashboard_service_and_project_commands_render_with_update_type_filters(
     )
 
     assert 'Copy Note command' in result["serviceButtons"]
-    assert 'bazarr: 1.6.0' in result["serviceButtons"]
+    assert 'service-alpha: 1.6.0' in result["serviceButtons"]
     assert 'Copy Digest command' not in result["serviceButtons"]
     assert result["bumpAll"] == {
-        "text": "bump bazarr to 1.6.0 && bump sonarr to 4.0.19 && up arr-stack",
+        "text": "bump service-alpha to 1.6.0 && bump service-gamma to 4.0.19 && up sample-stack",
         "missing": [],
     }
     assert result["refreshAll"] == {
-        "text": "pull qbittorrent && up arr-stack",
+        "text": "pull service-epsilon && up sample-stack",
         "missing": [],
     }
     assert 'data-icon="code"' in result["projectButtons"]
@@ -255,9 +255,9 @@ def test_dashboard_project_template_renders_with_only_project_placeholder():
         """
         (() => {
           const project = {
-            name: 'arr-stack',
+            name: 'sample-stack',
             services: [
-              { service: 'qbittorrent', update_type: 'digest_refresh', current: '5.2.3', latest: '5.2.3', metadata: { compose_service: 'qbittorrent' } },
+              { service: 'service-epsilon', update_type: 'digest_refresh', current: '5.2.3', latest: '5.2.3', metadata: { compose_service: 'service-epsilon' } },
             ],
           };
           const rendered = renderProjectCommand(
@@ -273,7 +273,7 @@ def test_dashboard_project_template_renders_with_only_project_placeholder():
         """
     )
 
-    assert result["rendered"] == {"text": "hc update arr-stack", "missing": []}
+    assert result["rendered"] == {"text": "hc update sample-stack", "missing": []}
     assert result["missing"] == {"text": None, "missing": ["service"]}
 
 
@@ -284,11 +284,11 @@ def test_dashboard_project_item_template_skips_services_with_missing_placeholder
           const warnings = [];
           console.warn = (...args) => warnings.push(args.join(' '));
           const project = {
-            name: 'arr-stack',
+            name: 'sample-stack',
             services: [
-              { service: 'bazarr', update_type: 'tag_bump', current: '1.5.0', latest: '1.6.0', metadata: { compose_service: 'bazarr' } },
-              { service: 'sonarr', update_type: 'tag_bump', current: '4.0.18', latest: '4.0.19', metadata: {} },
-              { service: 'radarr', update_type: 'tag_bump', current: '6.1.0', latest: '6.1.1', metadata: { compose_service: 'radarr' } },
+              { service: 'service-alpha', update_type: 'tag_bump', current: '1.5.0', latest: '1.6.0', metadata: { compose_service: 'service-alpha' } },
+              { service: 'service-gamma', update_type: 'tag_bump', current: '4.0.18', latest: '4.0.19', metadata: {} },
+              { service: 'service-beta', update_type: 'tag_bump', current: '6.1.0', latest: '6.1.1', metadata: { compose_service: 'service-beta' } },
             ],
           };
           const rendered = renderProjectCommand(
@@ -301,11 +301,11 @@ def test_dashboard_project_item_template_skips_services_with_missing_placeholder
     )
 
     assert result["rendered"] == {
-        "text": "hc bump bazarr 1.6.0 && hc bump radarr 6.1.1 --apply",
+        "text": "hc bump service-alpha 1.6.0 && hc bump service-beta 6.1.1 --apply",
         "missing": [],
     }
     assert result["warnings"]
-    assert "Skipping command bump-all for service sonarr" in result["warnings"][0]
+    assert "Skipping command bump-all for service service-gamma" in result["warnings"][0]
 
 
 def test_dashboard_command_buttons_disable_missing_placeholders():
@@ -315,8 +315,8 @@ def test_dashboard_command_buttons_disable_missing_placeholders():
           const commands = [
             { name: 'broken', scope: 'service', label: 'Broken', template: 'pull {compose_project} {compose_service}' },
           ];
-          const project = { name: 'arr-stack' };
-          const service = { service: 'sonarr', update_type: 'tag_bump', current: '4.0.18', latest: '4.0.19', metadata: { compose_project: 'arr-stack' } };
+          const project = { name: 'sample-stack' };
+          const service = { service: 'service-gamma', update_type: 'tag_bump', current: '4.0.18', latest: '4.0.19', metadata: { compose_project: 'sample-stack' } };
           return renderServiceCommandButtons(service, project, commands);
         })()
         """
